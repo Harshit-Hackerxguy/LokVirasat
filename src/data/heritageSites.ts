@@ -11,18 +11,28 @@ export const HERITAGE_SITES: HeritageSite[] = [
     zoomLevel: 16.5,
     pitch: 55,
     bearing: -30,
+
+    verificationStatus: 'authority-verified',
+    lastUpdated: '2026-08-23',
+    images: [],
   },
+
   {
     id: 'hampi',
     name: 'Hampi — Ruins of Vijayanagara',
     coordinates: [76.4601, 15.335],
     description:
-      'Scattered across a surreal landscape of giant granite boulders, the ruins of Hampi whisper tales of a once-magnificent empire. The Vijayanagara Empire\'s capital was among the richest and largest cities in the world during the 14th–16th centuries. Today, over 1,600 surviving remains — temples, palaces, market streets, and aquatic structures — sprawl across 4,100 hectares, blending seamlessly with the otherworldly terrain.',
+      "Scattered across a surreal landscape of giant granite boulders, the ruins of Hampi whisper tales of a once-magnificent empire. The Vijayanagara Empire's capital was among the richest and largest cities in the world during the 14th–16th centuries. Today, over 1,600 surviving remains — temples, palaces, market streets, and aquatic structures — sprawl across 4,100 hectares, blending seamlessly with the otherworldly terrain.",
     category: HeritageCategory.Monument,
     zoomLevel: 14.8,
     pitch: 45,
     bearing: 20,
+
+    verificationStatus: 'authority-verified',
+    lastUpdated: '2026-08-23',
+    images: [],
   },
+
   {
     id: 'konark-sun-temple',
     name: 'Konark Sun Temple',
@@ -33,16 +43,25 @@ export const HERITAGE_SITES: HeritageSite[] = [
     zoomLevel: 17,
     pitch: 50,
     bearing: 60,
+
+    verificationStatus: 'authority-verified',
+    lastUpdated: '2026-08-23',
+    images: [],
   },
+
   {
     id: 'khajuraho',
     name: 'Khajuraho Temples',
     coordinates: [79.9199, 24.8318],
     description:
-      'Rising from the plains of Madhya Pradesh, the Khajuraho temple complex represents the pinnacle of Chandela dynasty artistry. Of the original 85 temples built between 950 and 1050 CE, 25 survive in remarkable condition — their sandstone surfaces alive with thousands of sculptures celebrating love, spirituality, and the rhythms of courtly life. The temples\' nagara-style shikhara towers soar upward in cascading tiers, creating a silhouette that mirrors the sacred Himalayan peaks.',
+      "Rising from the plains of Madhya Pradesh, the Khajuraho temple complex represents the pinnacle of Chandela dynasty artistry. Of the original 85 temples built between 950 and 1050 CE, 25 survive in remarkable condition — their sandstone surfaces alive with thousands of sculptures celebrating love, spirituality, and the rhythms of courtly life. The temples' nagara-style shikhara towers soar upward in cascading tiers, creating a silhouette that mirrors the sacred Himalayan peaks.",
     category: HeritageCategory.Monument,
     zoomLevel: 15.5,
     pitch: 40,
     bearing: -15,
+
+    verificationStatus: 'authority-verified',
+    lastUpdated: '2026-08-23',
+    images: [],
   },
 ];

@@ -8,6 +8,11 @@ export enum HeritageCategory {
   TraditionalCraftHub = 'Traditional Craft Hub',
 }
 
+export type VerificationStatus =
+  | 'reported'
+  | 'community-verified'
+  | 'authority-verified';
+
 export interface HeritageSite {
   id: string;
   name: string;
@@ -17,6 +22,31 @@ export interface HeritageSite {
   zoomLevel: number;
   pitch: number;
   bearing: number;
+
+  // LokVirasat fields
+  verificationStatus?: VerificationStatus;
+  lastUpdated?: string;
+  images?: string[];
+}
+
+export interface HeritageLead {
+  id: string;
+  name: string;
+  approximateLocation: Coordinates;
+  villageOrArea: string;
+  category: HeritageCategory;
+  description: string;
+
+  submittedBy: string;
+  submittedAt: string;
+
+  status:
+    | 'needs-documentation'
+    | 'claimed'
+    | 'documented'
+    | 'verified';
+
+  assignedContributor?: string;
 }
 
 export enum IssueType {
