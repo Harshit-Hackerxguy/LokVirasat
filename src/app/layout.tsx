@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Map, MapPin, Compass, Info } from "lucide-react";
+import { Map, MapPin, Compass, Info, User } from "lucide-react";
 import Link from "next/link";
 import "./globals.css";
 
@@ -47,6 +47,10 @@ export default function RootLayout({
                 <Link href="/about" className="nav-link">
                   <Info size={20} />
                   <span>About</span>
+                </Link>
+                <Link href="/login" className="nav-link bg-white/10 px-4 py-2 rounded-full hover:bg-white/20 transition-colors">
+                  <User size={18} />
+                  <span>Login / Sign Up</span>
                 </Link>
               </nav>
             </div>

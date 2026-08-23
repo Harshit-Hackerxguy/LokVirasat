@@ -2,8 +2,10 @@ export type Coordinates = [longitude: number, latitude: number];
 
 export enum HeritageCategory {
   Monument = 'Monument',
-  Natural = 'Natural',
-  Folklore = 'Folklore',
+  SacredGrove = 'Sacred Grove',
+  FolkloreSite = 'Folklore Site',
+  AncientRuins = 'Ancient Ruins',
+  TraditionalCraftHub = 'Traditional Craft Hub',
 }
 
 export interface HeritageSite {

@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useEffect, useRef, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { HERITAGE_SITES } from '@/data/heritageSites';
+import { useMapStore } from '@/store/useMapStore';
+import { Coordinates } from '@/types';
 
 // Fix for default marker icon in Next.js + Leaflet
 const DefaultIcon = L.icon({
@@ -51,17 +53,87 @@ function FlyToActiveSite({ activeSiteId }: { activeSiteId?: string | null }) {
   return null;
 }
 
+function PinningModeManager() {
+  const isPinningMode = useMapStore((state) => state.isPinningMode);
+  const setDraftLocation = useMapStore((state) => state.setDraftLocation);
+  
+  useMapEvents({
+    click(e) {
+      if (isPinningMode) {
+        setDraftLocation([e.latlng.lng, e.latlng.lat]);
+      }
+    },
+  });
+
+  return null;
+}
+
+function DraggableMarker() {
+  const isPinningMode = useMapStore((state) => state.isPinningMode);
+  const draftLocation = useMapStore((state) => state.selectedDraftLocation);
+  const setDraftLocation = useMapStore((state) => state.setDraftLocation);
+  const markerRef = useRef<L.Marker>(null);
+
+  const eventHandlers = useMemo(
+    () => ({
+      dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const latLng = marker.getLatLng();
+          setDraftLocation([latLng.lng, latLng.lat]);
+        }
+      },
+    }),
+    [setDraftLocation],
+  );
+
+  if (!isPinningMode || !draftLocation) return null;
+
+  return (
+    <Marker
+      draggable={true}
+      eventHandlers={eventHandlers}
+      position={[draftLocation[1], draftLocation[0]]}
+      icon={ActiveIcon}
+      ref={markerRef}
+    >
+      <Popup minWidth={90}>
+        <span>Drag to adjust</span>
+      </Popup>
+    </Marker>
+  );
+}
+
 export default function MapComponent({ activeSiteId, onMarkerClick }: MapComponentProps) {
   // Center India [lat, lng]
   const center: [number, number] = [20.5937, 78.9629]; 
   
+  const isPinningMode = useMapStore((state) => state.isPinningMode);
+  const setPinningMode = useMapStore((state) => state.setPinningMode);
+  const setModalOpen = useMapStore((state) => state.setModalOpen);
+  
   return (
-    <MapContainer 
-      center={center} 
-      zoom={4.5} 
-      className="interactive-map-canvas"
-      style={{ width: '100%', height: '100%', zIndex: 1 }}
-    >
+    <div className="relative w-full h-full" style={{ cursor: isPinningMode ? 'crosshair' : 'default' }}>
+      {isPinningMode && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white rounded-md shadow-lg p-4 flex flex-col items-center gap-2">
+          <p className="font-semibold text-sm">Click anywhere on the map to set the site location.</p>
+          <button 
+            onClick={() => {
+              setPinningMode(false);
+              setModalOpen(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors"
+          >
+            Confirm Location
+          </button>
+        </div>
+      )}
+      <MapContainer 
+        center={center} 
+        zoom={4.5} 
+        className="interactive-map-canvas"
+        style={{ width: '100%', height: '100%', zIndex: 1 }}
+      >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -90,7 +162,11 @@ export default function MapComponent({ activeSiteId, onMarkerClick }: MapCompone
         );
       })}
       
+      
       <FlyToActiveSite activeSiteId={activeSiteId} />
+      <PinningModeManager />
+      <DraggableMarker />
     </MapContainer>
+    </div>
   );
 }
