@@ -34,12 +34,13 @@ export default function InteractiveMap(props: InteractiveMapProps) {
         <Map {...props} />
       </div>
 
+      {/* Report a lesser-known heritage location */}
       <button
         onClick={() => setModalOpen(true)}
         className="fixed bottom-6 right-6 z-[1000] bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-full px-6 py-3 font-semibold flex items-center gap-2 transition-transform hover:scale-105"
       >
         <Plus className="w-5 h-5" />
-        Add Heritage Site
+        Report Heritage Site
       </button>
 
       <AddHeritageModal />
