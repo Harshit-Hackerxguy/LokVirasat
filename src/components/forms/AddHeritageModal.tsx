@@ -1,311 +1,926 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+} from 'react';
+
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Navigation, Image as ImageIcon, X, Loader2, UploadCloud } from 'lucide-react';
+
+import {
+  motion,
+  AnimatePresence,
+} from 'framer-motion';
+
+import {
+  MapPin,
+  Navigation,
+  X,
+  Loader2,
+  UploadCloud,
+  CheckCircle,
+} from 'lucide-react';
+
 import { useMapStore } from '@/store/useMapStore';
-import { heritageSchema, HeritageFormValues } from '@/utils/validations/heritage';
-import { HeritageCategory } from '@/types';
+
+import {
+  heritageSchema,
+  HeritageFormValues,
+} from '@/utils/validations/heritage';
+
+import {
+  HeritageCategory,
+  HeritageLead,
+} from '@/types';
+
+const STORAGE_KEY =
+  'lokvirasat-heritage-leads';
 
 export default function AddHeritageModal() {
-  const isModalOpen = useMapStore(state => state.isModalOpen);
-  const setModalOpen = useMapStore(state => state.setModalOpen);
-  const setPinningMode = useMapStore(state => state.setPinningMode);
-  const draftLocation = useMapStore(state => state.selectedDraftLocation);
-  
-  const [isLocating, setIsLocating] = useState(false);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const isModalOpen = useMapStore(
+    (state) => state.isModalOpen
+  );
+
+  const setModalOpen = useMapStore(
+    (state) => state.setModalOpen
+  );
+
+  const setPinningMode = useMapStore(
+    (state) => state.setPinningMode
+  );
+
+  const draftLocation = useMapStore(
+    (state) => state.selectedDraftLocation
+  );
+
+  const [isLocating, setIsLocating] =
+    useState(false);
+
+  const [imageFiles, setImageFiles] =
+    useState<File[]>([]);
+
+  const [previewUrls, setPreviewUrls] =
+    useState<string[]>([]);
 
   const {
     register,
     handleSubmit,
-    control,
     setValue,
-    formState: { errors, isSubmitting }
+    reset,
+    formState: {
+      errors,
+      isSubmitting,
+    },
   } = useForm<HeritageFormValues>({
     resolver: zodResolver(heritageSchema),
+
     defaultValues: {
       name: '',
       category: '',
       description: '',
-    }
+    },
   });
+
+  // =========================================================
+  // SET LOCATION
+  // =========================================================
 
   useEffect(() => {
     if (draftLocation) {
-      setValue('coordinates', draftLocation, { shouldValidate: true });
+      setValue(
+        'coordinates',
+        draftLocation,
+        {
+          shouldValidate: true,
+        }
+      );
     }
-  }, [draftLocation, setValue]);
+  }, [
+    draftLocation,
+    setValue,
+  ]);
 
-  // Clean up previews
+  // =========================================================
+  // CLEAN IMAGE PREVIEWS
+  // =========================================================
+
   useEffect(() => {
-    return () => previewUrls.forEach(url => URL.revokeObjectURL(url));
+    return () => {
+      previewUrls.forEach((url) =>
+        URL.revokeObjectURL(url)
+      );
+    };
   }, [previewUrls]);
+
+  // =========================================================
+  // LIVE LOCATION
+  // =========================================================
 
   const handleUseLiveLocation = () => {
     setIsLocating(true);
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
-          setValue('coordinates', coords, { shouldValidate: true });
-          useMapStore.getState().setDraftLocation(coords);
-          setIsLocating(false);
-        },
-        (error) => {
-          console.error("Error getting location", error);
-          alert("Could not get your location. Please check permissions or use map pinning.");
-          setIsLocating(false);
-        },
-        { enableHighAccuracy: true }
+
+    if (!('geolocation' in navigator)) {
+      alert(
+        'Geolocation is not supported by your browser.'
       );
-    } else {
-      alert("Geolocation is not supported by your browser");
+
       setIsLocating(false);
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords: [
+          number,
+          number
+        ] = [
+          position.coords.longitude,
+          position.coords.latitude,
+        ];
+
+        setValue(
+          'coordinates',
+          coords,
+          {
+            shouldValidate: true,
+          }
+        );
+
+        useMapStore
+          .getState()
+          .setDraftLocation(coords);
+
+        setIsLocating(false);
+      },
+
+      (error) => {
+        console.error(
+          'Error getting location:',
+          error
+        );
+
+        alert(
+          'Could not get your location. Please check permissions or use map pinning.'
+        );
+
+        setIsLocating(false);
+      },
+
+      {
+        enableHighAccuracy: true,
+      }
+    );
   };
+
+  // =========================================================
+  // PICK LOCATION ON MAP
+  // =========================================================
 
   const handlePickOnMap = () => {
     setModalOpen(false);
     setPinningMode(true);
   };
 
-  const handleImageDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(Array.from(e.dataTransfer.files));
-    }
-  }, [imageFiles]);
+  // =========================================================
+  // IMAGE HANDLING
+  // =========================================================
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFiles(Array.from(e.target.files));
+  const handleImageDrop = useCallback(
+    (
+      e: React.DragEvent<HTMLDivElement>
+    ) => {
+      e.preventDefault();
+
+      if (
+        e.dataTransfer.files &&
+        e.dataTransfer.files.length > 0
+      ) {
+        handleFiles(
+          Array.from(
+            e.dataTransfer.files
+          )
+        );
+      }
+    },
+    [imageFiles]
+  );
+
+  const handleFileInput = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    if (
+      e.target.files &&
+      e.target.files.length > 0
+    ) {
+      handleFiles(
+        Array.from(
+          e.target.files
+        )
+      );
     }
   };
 
-  const handleFiles = (newFiles: File[]) => {
-    const combined = [...imageFiles, ...newFiles].slice(0, 5); // max 5
+  const handleFiles = (
+    newFiles: File[]
+  ) => {
+    const validFiles =
+      newFiles.filter((file) =>
+        file.type.startsWith('image/')
+      );
+
+    const combined = [
+      ...imageFiles,
+      ...validFiles,
+    ].slice(0, 5);
+
     setImageFiles(combined);
-    setValue('images', combined, { shouldValidate: true });
-    
-    // Generate previews
-    const newUrls = newFiles.map(f => URL.createObjectURL(f));
-    setPreviewUrls(prev => [...prev, ...newUrls].slice(0, 5));
+
+    setValue(
+      'images',
+      combined,
+      {
+        shouldValidate: true,
+      }
+    );
+
+    const newUrls =
+      validFiles.map((file) =>
+        URL.createObjectURL(file)
+      );
+
+    setPreviewUrls((prev) =>
+      [
+        ...prev,
+        ...newUrls,
+      ].slice(0, 5)
+    );
   };
 
-  const removeImage = (index: number) => {
-    const updatedFiles = [...imageFiles];
+  const removeImage = (
+    index: number
+  ) => {
+    const updatedFiles = [
+      ...imageFiles,
+    ];
+
     updatedFiles.splice(index, 1);
+
     setImageFiles(updatedFiles);
-    setValue('images', updatedFiles, { shouldValidate: true });
-    
-    const updatedUrls = [...previewUrls];
-    URL.revokeObjectURL(updatedUrls[index]);
+
+    setValue(
+      'images',
+      updatedFiles,
+      {
+        shouldValidate: true,
+      }
+    );
+
+    const updatedUrls = [
+      ...previewUrls,
+    ];
+
+    if (updatedUrls[index]) {
+      URL.revokeObjectURL(
+        updatedUrls[index]
+      );
+    }
+
     updatedUrls.splice(index, 1);
+
     setPreviewUrls(updatedUrls);
   };
 
-  const onSubmit = async (data: HeritageFormValues) => {
-    console.log("Form Submitted: ", data);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setModalOpen(false);
-    useMapStore.getState().setDraftLocation(null);
-    alert("Heritage site contributed successfully!");
+  // =========================================================
+  // SUBMIT CONTRIBUTION
+  // =========================================================
+
+  const onSubmit = async (
+    data: HeritageFormValues
+  ) => {
+    try {
+      // -------------------------------------------------------
+      // Make sure we actually have a location
+      // -------------------------------------------------------
+
+      if (!data.coordinates) {
+        alert(
+          'Please select a location before submitting.'
+        );
+
+        return;
+      }
+
+      // -------------------------------------------------------
+      // Create a new Heritage Lead
+      // -------------------------------------------------------
+
+      const newLead: HeritageLead = {
+        id: `lead-community-${Date.now()}`,
+
+        name: data.name,
+
+        category:
+          data.category as HeritageCategory,
+
+        description:
+          data.description,
+
+        villageOrArea:
+          'Community Reported Location',
+
+        submittedBy:
+          'Local Community',
+
+        submittedAt:
+          new Date()
+            .toISOString()
+            .split('T')[0],
+
+        // This is what makes it appear
+        // under Contributor → Available.
+        status:
+          'needs-documentation',
+
+        assignedContributor:
+          undefined,
+
+        approximateLocation:
+          data.coordinates,
+      };
+
+      // -------------------------------------------------------
+      // Read existing contributor leads
+      // -------------------------------------------------------
+
+      const existingData =
+        window.localStorage.getItem(
+          STORAGE_KEY
+        );
+
+      let existingLeads: HeritageLead[] =
+        [];
+
+      if (existingData) {
+        try {
+          const parsed =
+            JSON.parse(
+              existingData
+            );
+
+          if (
+            Array.isArray(parsed)
+          ) {
+            existingLeads =
+              parsed;
+          }
+        } catch (error) {
+          console.error(
+            'Could not parse stored heritage leads:',
+            error
+          );
+
+          existingLeads = [];
+        }
+      }
+
+      // -------------------------------------------------------
+      // Add the new lead
+      // -------------------------------------------------------
+
+      const updatedLeads = [
+        ...existingLeads,
+        newLead,
+      ];
+
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(
+          updatedLeads
+        )
+      );
+
+      // -------------------------------------------------------
+      // Verify storage immediately
+      // -------------------------------------------------------
+
+      const savedData =
+        window.localStorage.getItem(
+          STORAGE_KEY
+        );
+
+      console.log(
+        'Heritage lead created:',
+        newLead
+      );
+
+      console.log(
+        'Saved contributor leads:',
+        savedData
+      );
+
+      // -------------------------------------------------------
+      // Small submission delay
+      // -------------------------------------------------------
+
+      await new Promise(
+        (resolve) =>
+          setTimeout(
+            resolve,
+            500
+          )
+      );
+
+      // -------------------------------------------------------
+      // Reset form
+      // -------------------------------------------------------
+
+      reset();
+
+      setImageFiles([]);
+
+      setPreviewUrls([]);
+
+      // -------------------------------------------------------
+      // Clear map draft location
+      // -------------------------------------------------------
+
+      useMapStore
+        .getState()
+        .setDraftLocation(null);
+
+      // -------------------------------------------------------
+      // Close modal
+      // -------------------------------------------------------
+
+      setModalOpen(false);
+
+      alert(
+        'Heritage site submitted successfully! It is now available for contributors to document.'
+      );
+
+    } catch (error) {
+      console.error(
+        'Failed to submit heritage contribution:',
+        error
+      );
+
+      alert(
+        'Something went wrong while submitting the heritage site.'
+      );
+    }
   };
 
-  if (!isModalOpen) return null;
+  // =========================================================
+  // MODAL
+  // =========================================================
+
+  if (!isModalOpen) {
+    return null;
+  }
 
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        initial={{
+          opacity: 0,
+        }}
+        animate={{
+          opacity: 1,
+        }}
+        exit={{
+          opacity: 0,
+        }}
       >
+
         <motion.div
-          className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
-          initial={{ y: 50, opacity: 0, scale: 0.95 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: 20, opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white text-gray-900 shadow-2xl"
+          initial={{
+            y: 50,
+            opacity: 0,
+            scale: 0.95,
+          }}
+          animate={{
+            y: 0,
+            opacity: 1,
+            scale: 1,
+          }}
+          exit={{
+            y: 20,
+            opacity: 0,
+            scale: 0.95,
+          }}
+          transition={{
+            duration: 0.3,
+            ease: 'easeOut',
+          }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50">
-            <h2 className="text-2xl font-bold text-gray-800">Contribute Heritage Site</h2>
-            <button 
+
+          {/* =================================================
+              HEADER
+          ================================================= */}
+
+          <div className="flex shrink-0 items-center justify-between border-b border-gray-100 bg-gray-50/50 p-6">
+
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Contribute Heritage Site
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Report a lesser-known heritage location
+                for documentation.
+              </p>
+            </div>
+
+            <button
               type="button"
-              onClick={() => setModalOpen(false)}
-              className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+              onClick={() =>
+                setModalOpen(false)
+              }
+              className="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-800"
+              aria-label="Close"
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className="h-5 w-5" />
             </button>
+
           </div>
 
-          {/* Body */}
-          <div className="p-6 overflow-y-auto custom-scrollbar">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              
-              {/* Location Selection */}
+          {/* =================================================
+              BODY
+          ================================================= */}
+
+          <div className="custom-scrollbar overflow-y-auto p-6">
+
+            <form
+              onSubmit={handleSubmit(
+                onSubmit
+              )}
+              className="space-y-6"
+            >
+
+              {/* =================================================
+                  LOCATION
+              ================================================= */}
+
               <div className="space-y-3">
-                <label className="block text-sm font-semibold text-gray-700">Site Location *</label>
-                
+
+                <label className="block text-sm font-semibold text-gray-700">
+                  Site Location *
+                </label>
+
                 {draftLocation ? (
-                  <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
+
+                  <div className="flex items-center justify-between rounded-xl border border-green-200 bg-green-50 p-4">
+
                     <div className="flex items-center gap-3">
-                      <div className="bg-green-100 p-2 rounded-lg text-green-600">
-                        <MapPin className="w-5 h-5" />
+
+                      <div className="rounded-lg bg-green-100 p-2 text-green-600">
+                        <CheckCircle className="h-5 w-5" />
                       </div>
+
                       <div>
-                        <p className="font-medium text-green-800">Location Selected</p>
-                        <p className="text-sm text-green-600">
-                          {draftLocation[1].toFixed(5)}, {draftLocation[0].toFixed(5)}
+
+                        <p className="font-medium text-green-800">
+                          Location Selected
                         </p>
+
+                        <p className="text-sm text-green-600">
+                          {draftLocation[1].toFixed(5)}
+                          {', '}
+                          {draftLocation[0].toFixed(5)}
+                        </p>
+
                       </div>
+
                     </div>
+
                     <button
                       type="button"
-                      onClick={handlePickOnMap}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline px-2 py-1"
+                      onClick={
+                        handlePickOnMap
+                      }
+                      className="px-2 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
                     >
                       Re-pick on map
                     </button>
+
                   </div>
+
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+
                     <button
                       type="button"
-                      onClick={handleUseLiveLocation}
-                      disabled={isLocating}
-                      className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all group"
+                      onClick={
+                        handleUseLiveLocation
+                      }
+                      disabled={
+                        isLocating
+                      }
+                      className="group flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-white p-6 transition-all hover:border-blue-400 hover:bg-blue-50"
                     >
+
                       {isLocating ? (
-                        <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" />
+                        <Loader2 className="mb-3 h-8 w-8 animate-spin text-blue-500" />
                       ) : (
-                        <Navigation className="w-8 h-8 text-gray-400 group-hover:text-blue-500 mb-3 transition-colors" />
+                        <Navigation className="mb-3 h-8 w-8 text-gray-400 transition-colors group-hover:text-blue-500" />
                       )}
-                      <span className="font-medium text-gray-700 group-hover:text-blue-700">Use Live Location</span>
-                      <span className="text-xs text-gray-400 mt-1">Requires GPS permission</span>
+
+                      <span className="font-medium text-gray-700 group-hover:text-blue-700">
+                        Use Live Location
+                      </span>
+
+                      <span className="mt-1 text-xs text-gray-400">
+                        Requires GPS permission
+                      </span>
+
                     </button>
 
                     <button
                       type="button"
-                      onClick={handlePickOnMap}
-                      className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all group"
+                      onClick={
+                        handlePickOnMap
+                      }
+                      className="group flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-white p-6 transition-all hover:border-blue-400 hover:bg-blue-50"
                     >
-                      <MapPin className="w-8 h-8 text-gray-400 group-hover:text-blue-500 mb-3 transition-colors" />
-                      <span className="font-medium text-gray-700 group-hover:text-blue-700">Pick on Map</span>
-                      <span className="text-xs text-gray-400 mt-1">Interactive map pinning</span>
+
+                      <MapPin className="mb-3 h-8 w-8 text-gray-400 transition-colors group-hover:text-blue-500" />
+
+                      <span className="font-medium text-gray-700 group-hover:text-blue-700">
+                        Pick on Map
+                      </span>
+
+                      <span className="mt-1 text-xs text-gray-400">
+                        Interactive map pinning
+                      </span>
+
                     </button>
+
                   </div>
                 )}
+
                 {errors.coordinates && (
-                  <p className="text-red-500 text-sm mt-1">{errors.coordinates.message}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {
+                      errors
+                        .coordinates
+                        .message
+                    }
+                  </p>
                 )}
+
               </div>
 
-              {/* Site Details */}
+              {/* =================================================
+                  SITE DETAILS
+              ================================================= */}
+
               <div className="space-y-4">
+
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Site Name *</label>
+
+                  <label className="mb-1 block text-sm font-semibold text-gray-700">
+                    Site Name *
+                  </label>
+
                   <input
                     type="text"
-                    {...register('name')}
+                    {...register(
+                      'name'
+                    )}
                     placeholder="e.g. Ancient Banyan Tree"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                   />
-                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+
+                  {errors.name && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {
+                        errors
+                          .name
+                          .message
+                      }
+                    </p>
+                  )}
+
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Category *</label>
+
+                  <label className="mb-1 block text-sm font-semibold text-gray-700">
+                    Category *
+                  </label>
+
                   <select
-                    {...register('category')}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+                    {...register(
+                      'category'
+                    )}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Select a category</option>
-                    {Object.values(HeritageCategory).map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
+
+                    <option
+                      value=""
+                      className="text-gray-500"
+                    >
+                      Select a category
+                    </option>
+
+                    {Object.values(
+                      HeritageCategory
+                    ).map(
+                      (cat) => (
+                        <option
+                          key={cat}
+                          value={cat}
+                          className="text-gray-900"
+                        >
+                          {cat}
+                        </option>
+                      )
+                    )}
+
                   </select>
-                  {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>}
+
+                  {errors.category && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {
+                        errors
+                          .category
+                          .message
+                      }
+                    </p>
+                  )}
+
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Description / History *</label>
+
+                  <label className="mb-1 block text-sm font-semibold text-gray-700">
+                    Description / History *
+                  </label>
+
                   <textarea
-                    {...register('description')}
+                    {...register(
+                      'description'
+                    )}
                     rows={4}
                     placeholder="Describe the historical or cultural significance..."
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
+                    className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                   />
-                  {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>}
+
+                  {errors.description && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {
+                        errors
+                          .description
+                          .message
+                      }
+                    </p>
+                  )}
+
                 </div>
+
               </div>
 
-              {/* Media Upload */}
+              {/* =================================================
+                  PHOTOS
+              ================================================= */}
+
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Photos (Up to 5)</label>
-                <div 
-                  className="w-full border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer relative"
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={handleImageDrop}
+
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Photos (Up to 5)
+                </label>
+
+                <div
+                  className="relative w-full cursor-pointer rounded-xl border-2 border-dashed border-gray-200 bg-white p-8 text-center transition-colors hover:bg-gray-50"
+                  onDragOver={(e) =>
+                    e.preventDefault()
+                  }
+                  onDrop={
+                    handleImageDrop
+                  }
                 >
-                  <input 
-                    type="file" 
-                    multiple 
-                    accept="image/*" 
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    onChange={handleFileInput}
+
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    onChange={
+                      handleFileInput
+                    }
                   />
-                  <UploadCloud className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600 font-medium">Drag & drop images or click to browse</p>
-                  <p className="text-sm text-gray-400 mt-1">PNG, JPG up to 10MB each</p>
+
+                  <UploadCloud className="mx-auto mb-3 h-10 w-10 text-gray-400" />
+
+                  <p className="font-medium text-gray-600">
+                    Drag & drop images or click to browse
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-400">
+                    PNG, JPG up to 10MB each
+                  </p>
+
                 </div>
-                {errors.images && <p className="text-red-500 text-sm mt-1">{errors.images?.message as string}</p>}
-                
-                {/* Image Previews */}
-                {previewUrls.length > 0 && (
-                  <div className="grid grid-cols-5 gap-4 mt-4">
-                    {previewUrls.map((url, i) => (
-                      <div key={i} className="relative aspect-square rounded-lg overflow-hidden group">
-                        <img src={url} alt="preview" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(i)}
-                          className="absolute top-1 right-1 bg-red-500/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+
+                {errors.images && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {
+                      errors.images
+                        ?.message as string
+                    }
+                  </p>
                 )}
+
+                {previewUrls.length > 0 && (
+
+                  <div className="mt-4 grid grid-cols-5 gap-4">
+
+                    {previewUrls.map(
+                      (
+                        url,
+                        index
+                      ) => (
+
+                        <div
+                          key={index}
+                          className="group relative aspect-square overflow-hidden rounded-lg"
+                        >
+
+                          <img
+                            src={url}
+                            alt={`Preview ${index + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              removeImage(
+                                index
+                              )
+                            }
+                            className="absolute right-1 top-1 rounded-full bg-red-500/80 p-1 text-white opacity-0 transition-opacity hover:bg-red-600 group-hover:opacity-100"
+                            aria-label={`Remove image ${index + 1}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+
+                        </div>
+
+                      )
+                    )}
+
+                  </div>
+
+                )}
+
               </div>
 
-              <div className="pt-4 border-t border-gray-100">
+              {/* =================================================
+                  SUBMIT
+              ================================================= */}
+
+              <div className="border-t border-gray-100 pt-4">
+
                 <button
                   type="submit"
-                  disabled={isSubmitting || !draftLocation}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  disabled={
+                    isSubmitting ||
+                    !draftLocation
+                  }
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-blue-300"
                 >
+
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" />
                       Submitting...
                     </>
                   ) : (
                     'Submit Contribution'
                   )}
+
                 </button>
+
+                {!draftLocation && (
+                  <p className="mt-2 text-center text-xs text-gray-400">
+                    Select a site location before submitting.
+                  </p>
+                )}
+
               </div>
+
             </form>
+
           </div>
+
         </motion.div>
+
       </motion.div>
     </AnimatePresence>
   );
