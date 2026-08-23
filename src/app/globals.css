@@ -154,6 +154,43 @@ a {
   z-index: 0;
 }
 
+/* ── India Video Background ──────────────────────────────────────────────── */
+
+.india-video-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.india-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  /* slight dim so the coloured orbs still read */
+  opacity: 0.55;
+}
+
+/* Dark gradient overlay — keeps text readable while the video plays */
+.india-video-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    /* vignette edges */
+    radial-gradient(ellipse at center, transparent 30%, rgba(2, 6, 23, 0.75) 100%),
+    /* bottom-to-top dark ramp so hero text pops */
+    linear-gradient(
+      to top,
+      rgba(2, 6, 23, 0.92) 0%,
+      rgba(2, 6, 23, 0.55) 40%,
+      rgba(2, 6, 23, 0.35) 100%
+    );
+}
+
 /* Animated gradient orbs — pure CSS, zero GPU overhead */
 .hero-orb {
   position: absolute;

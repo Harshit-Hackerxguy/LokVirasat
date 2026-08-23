@@ -12,6 +12,7 @@ import { MapPin, Mountain, Landmark, ArrowRight, Compass, Shield, Mic } from 'lu
 
 import { HERITAGE_SITES } from '@/data/heritageSites';
 import { HeritageCategory } from '@/types';
+import IndiaMapBg from '@/components/home/IndiaMapBg';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -101,6 +102,8 @@ export default function Home() {
       >
         {/* Animated gradient orbs (pure CSS, no WebGL) */}
         <div className="hero-bg">
+          {/* Animated India map — decorative only */}
+          <IndiaMapBg />
           <div className="hero-orb hero-orb-1" />
           <div className="hero-orb hero-orb-2" />
           <div className="hero-orb hero-orb-3" />
