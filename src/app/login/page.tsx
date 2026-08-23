@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation';
 import {
   Loader2,
   Mail,
@@ -15,6 +16,7 @@ import {
   MapPin,
   Fingerprint,
   ArrowRight,
+  AlertCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -23,6 +25,7 @@ import {
   AdminFormValues,
   ContributorFormValues,
 } from '@/utils/validations/auth';
+import { useAuthStore } from '@/store/useAuthStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Role = 'admin' | 'contributor';
@@ -139,8 +142,17 @@ function InputField({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function LoginPage() {
+  const router = useRouter();
+  const { user, loginAsAdmin, loginAsContributor, loginError, clearError } = useAuthStore();
   const [role, setRole] = useState<Role>('contributor');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      router.replace(user.role === 'admin' ? '/verification' : '/contributor');
+    }
+  }, [user, router]);
 
   const {
     register: regAdmin,
@@ -156,16 +168,31 @@ export default function LoginPage() {
 
   const onAdmin = async (data: AdminFormValues) => {
     setIsLoading(true);
-    console.log('Admin login:', data);
-    await new Promise((r) => setTimeout(r, 1800));
+    clearError();
+    await new Promise((r) => setTimeout(r, 800));
+    const success = loginAsAdmin(data.adminId, data.password);
+    if (success) {
+      router.push('/verification');
+    }
     setIsLoading(false);
   };
 
   const onContrib = async (data: ContributorFormValues) => {
     setIsLoading(true);
-    console.log('Contributor login:', data);
-    await new Promise((r) => setTimeout(r, 1800));
+    clearError();
+    await new Promise((r) => setTimeout(r, 800));
+    const success = loginAsContributor(data.email, data.password);
+    if (success) {
+      router.push('/contributor');
+    }
     setIsLoading(false);
+  };
+
+  const handleRoleSwitch = (newRole: Role) => {
+    if (!isLoading) {
+      setRole(newRole);
+      clearError();
+    }
   };
 
   const isAdmin = role === 'admin';
@@ -270,8 +297,8 @@ export default function LoginPage() {
 
             {/* Role selector */}
             <div className="login-role-selector">
-              <RoleCard role="contributor" active={!isAdmin} onClick={() => !isLoading && setRole('contributor')} />
-              <RoleCard role="admin" active={isAdmin} onClick={() => !isLoading && setRole('admin')} />
+              <RoleCard role="contributor" active={!isAdmin} onClick={() => handleRoleSwitch('contributor')} />
+              <RoleCard role="admin" active={isAdmin} onClick={() => handleRoleSwitch('admin')} />
             </div>
 
             {/* Divider */}
@@ -280,6 +307,23 @@ export default function LoginPage() {
               <span className="login-divider-text">Sign in as {isAdmin ? 'Admin' : 'Contributor'}</span>
               <div className="login-divider-line" />
             </div>
+
+            {/* Auth Error Banner */}
+            <AnimatePresence>
+              {loginError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, y: -6, height: 0 }}
+                  style={{ overflow: 'hidden', marginBottom: '0.75rem' }}
+                >
+                  <div className="login-auth-error">
+                    <AlertCircle size={15} />
+                    <span>{loginError}</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Forms */}
             <div className="login-form-container">
