@@ -3,10 +3,13 @@
 import { useEffect, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import L from 'leaflet';
+import 'leaflet.markercluster';
 import { HERITAGE_SITES } from '@/data/heritageSites';
 import { useMapStore } from '@/store/useMapStore';
-import { Coordinates } from '@/types';
+import './MapStyles.css';
 
 // Fix for default marker icon in Next.js + Leaflet
 const DefaultIcon = L.icon({
@@ -21,7 +24,7 @@ const DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Custom icon for active marker
+// Custom icon for active marker (pinning mode)
 const ActiveIcon = L.icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -30,6 +33,104 @@ const ActiveIcon = L.icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
+
+// Custom marker icons based on category (migrated from CleanCity's severity)
+function createMarkerIcon(category: string) {
+  const colors: Record<string, string> = {
+    'Natural': '#00ff88',
+    'Monument': '#ff8800',
+    'Cultural': '#ff3355'
+  };
+  const color = colors[category] || colors['Monument'];
+  
+  return L.divIcon({
+    className: 'custom-marker',
+    html: `
+      <div class="marker-pin" style="--marker-color: ${color}">
+        <div class="marker-dot"></div>
+      </div>
+      <div class="marker-pulse" style="--marker-color: ${color}"></div>
+    `,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -20]
+  });
+}
+
+function MarkerClusterGroup({ onMarkerClick }: { onMarkerClick?: (siteId: string) => void }) {
+  const map = useMap();
+  const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
+
+  useEffect(() => {
+    if (clusterRef.current) {
+      map.removeLayer(clusterRef.current);
+    }
+
+    const cluster = L.markerClusterGroup({
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      iconCreateFunction: (clstr) => {
+        const count = clstr.getChildCount();
+        let size = 'small';
+        if (count > 10) size = 'medium';
+        if (count > 50) size = 'large';
+        return L.divIcon({
+          html: `<div><span>${count}</span></div>`,
+          className: `marker-cluster marker-cluster-${size}`,
+          iconSize: L.point(40, 40)
+        });
+      }
+    });
+
+    HERITAGE_SITES.forEach(site => {
+      const [lng, lat] = site.coordinates as [number, number];
+      const marker = L.marker([lat, lng], {
+        icon: createMarkerIcon(site.category)
+      });
+
+      const popupContent = document.createElement('div');
+      popupContent.className = 'marker-popup-content';
+      
+      popupContent.innerHTML = `
+        <div class="popup-inner">
+          <div class="popup-body">
+            <div class="popup-header">
+              <span class="severity-badge ${site.category}">${site.category}</span>
+            </div>
+            <strong class="block font-bold text-gray-800" style="font-size: 1.1rem; margin-top: 4px;">${site.name}</strong>
+            <p class="popup-description">${site.description || 'No description provided'}</p>
+            <div class="popup-meta">
+              <span>📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</span>
+            </div>
+            <div class="popup-actions" id="popup-actions-${site.id}"></div>
+          </div>
+        </div>
+      `;
+
+      const popup = L.popup({ maxWidth: 320, minWidth: 280, closeButton: true }).setContent(popupContent);
+      marker.bindPopup(popup);
+
+      marker.on('click', () => {
+        onMarkerClick?.(site.id);
+      });
+
+      cluster.addLayer(marker);
+    });
+
+    map.addLayer(cluster);
+    clusterRef.current = cluster;
+
+    return () => {
+      if (clusterRef.current) {
+        map.removeLayer(clusterRef.current);
+      }
+    };
+  }, [map, onMarkerClick]);
+
+  return null;
+}
 
 interface MapComponentProps {
   activeSiteId?: string | null;
@@ -42,10 +143,9 @@ function FlyToActiveSite({ activeSiteId }: { activeSiteId?: string | null }) {
     if (activeSiteId) {
       const site = HERITAGE_SITES.find(s => s.id === activeSiteId);
       if (site && site.coordinates) {
-        // maplibre uses [lng, lat], leaflet uses [lat, lng]
         const [lng, lat] = site.coordinates as [number, number];
-        map.flyTo([lat, lng], site.zoomLevel || 6, {
-          duration: 2
+        map.flyTo([lat, lng], site.zoomLevel || 13, {
+          duration: 1.5
         });
       }
     }
@@ -98,25 +198,25 @@ function DraggableMarker() {
       ref={markerRef}
     >
       <Popup minWidth={90}>
-        <span>Drag to adjust</span>
+        <span className="text-black">Drag to adjust</span>
       </Popup>
     </Marker>
   );
 }
 
 export default function MapComponent({ activeSiteId, onMarkerClick }: MapComponentProps) {
-  // Center India [lat, lng]
-  const center: [number, number] = [20.5937, 78.9629]; 
+  // Center India [lat, lng] (from CleanCity)
+  const center: [number, number] = [22.5, 78.9]; 
   
   const isPinningMode = useMapStore((state) => state.isPinningMode);
   const setPinningMode = useMapStore((state) => state.setPinningMode);
   const setModalOpen = useMapStore((state) => state.setModalOpen);
   
   return (
-    <div className="relative w-full h-full" style={{ cursor: isPinningMode ? 'crosshair' : 'default' }}>
+    <div className="relative w-full h-full map-container" style={{ cursor: isPinningMode ? 'crosshair' : 'default' }}>
       {isPinningMode && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white rounded-md shadow-lg p-4 flex flex-col items-center gap-2">
-          <p className="font-semibold text-sm">Click anywhere on the map to set the site location.</p>
+          <p className="font-semibold text-sm text-black">Click anywhere on the map to set the site location.</p>
           <button 
             onClick={() => {
               setPinningMode(false);
@@ -130,43 +230,23 @@ export default function MapComponent({ activeSiteId, onMarkerClick }: MapCompone
       )}
       <MapContainer 
         center={center} 
-        zoom={4.5} 
-        className="interactive-map-canvas"
+        zoom={5} 
+        zoomControl={true}
+        attributionControl={false}
+        className="interactive-map-canvas map-container"
         style={{ width: '100%', height: '100%', zIndex: 1 }}
       >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      
-      {HERITAGE_SITES.map((site) => {
-        const [lng, lat] = site.coordinates as [number, number];
-        const isActive = site.id === activeSiteId;
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        />
         
-        return (
-          <Marker 
-            key={site.id} 
-            position={[lat, lng]} 
-            icon={isActive ? ActiveIcon : DefaultIcon}
-            eventHandlers={{
-              click: () => onMarkerClick?.(site.id)
-            }}
-          >
-            <Popup>
-              <div className="marker-popup p-1">
-                <strong className="block font-bold text-gray-800">{site.name}</strong>
-                <span className="text-gray-600 text-sm">{site.category}</span>
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })}
-      
-      
-      <FlyToActiveSite activeSiteId={activeSiteId} />
-      <PinningModeManager />
-      <DraggableMarker />
-    </MapContainer>
+        {!isPinningMode && <MarkerClusterGroup onMarkerClick={onMarkerClick} />}
+        
+        <FlyToActiveSite activeSiteId={activeSiteId} />
+        <PinningModeManager />
+        <DraggableMarker />
+      </MapContainer>
     </div>
   );
 }
