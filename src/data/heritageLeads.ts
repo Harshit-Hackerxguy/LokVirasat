@@ -1,23 +1,4 @@
-import { HeritageCategory } from '@/types';
-
-export interface HeritageLead {
-  id: string;
-  name: string;
-  approximateLocation: [number, number];
-  villageOrArea: string;
-  category: HeritageCategory;
-  description: string;
-  submittedBy: string;
-  submittedAt: string;
-
-  status:
-    | 'needs-documentation'
-    | 'claimed'
-    | 'documented'
-    | 'verified';
-
-  assignedContributor?: string;
-}
+import { HeritageCategory, HeritageLead } from '@/types';
 
 export const HERITAGE_LEADS: HeritageLead[] = [
   {
@@ -51,7 +32,7 @@ export const HERITAGE_LEADS: HeritageLead[] = [
     name: 'Forgotten Village Fort',
     approximateLocation: [75.8577, 30.9000],
     villageOrArea: 'Village Heritage Zone',
-    category: HeritageCategory.Monument,
+    category: HeritageCategory.AncientRuins,
     description:
       'An old fortified structure known locally but lacking a complete digital heritage record. A contributor is required to document the site and collect local history.',
     submittedBy: 'Local Teacher',

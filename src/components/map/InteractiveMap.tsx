@@ -8,6 +8,7 @@ import AddHeritageModal from '@/components/forms/AddHeritageModal';
 interface InteractiveMapProps {
   /** If provided, the map will fly to this site */
   activeSiteId?: string | null;
+
   /** Callback when a marker is clicked */
   onMarkerClick?: (siteId: string) => void;
 }
@@ -26,10 +27,13 @@ export default function InteractiveMap(props: InteractiveMapProps) {
 
   return (
     <>
-      <div className="interactive-map-wrapper w-full h-full relative" style={{ minHeight: '100vh' }}>
+      <div
+        className="interactive-map-wrapper w-full h-full relative"
+        style={{ minHeight: '100vh' }}
+      >
         <Map {...props} />
       </div>
-      
+
       <button
         onClick={() => setModalOpen(true)}
         className="fixed bottom-6 right-6 z-[1000] bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-full px-6 py-3 font-semibold flex items-center gap-2 transition-transform hover:scale-105"

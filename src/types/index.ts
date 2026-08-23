@@ -23,7 +23,7 @@ export interface HeritageSite {
   pitch: number;
   bearing: number;
 
-  // LokVirasat fields
+  // LokVirasat
   verificationStatus?: VerificationStatus;
   lastUpdated?: string;
   images?: string[];
