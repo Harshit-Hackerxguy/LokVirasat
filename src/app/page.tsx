@@ -8,7 +8,7 @@ import {
   useTransform,
   useInView,
 } from 'framer-motion';
-import { MapPin, Mountain, Landmark, ArrowRight, Compass, Shield, Mic } from 'lucide-react';
+import { MapPin, Mountain, Landmark, BookOpen, Palette, ArrowRight, Compass, Shield, Mic } from 'lucide-react';
 
 import { HERITAGE_SITES } from '@/data/heritageSites';
 import { HeritageCategory } from '@/types';
@@ -17,10 +17,21 @@ import { HeritageCategory } from '@/types';
 
 function CategoryIcon({ category }: { category: HeritageCategory }) {
   switch (category) {
-    case HeritageCategory.Natural:
-      return <Mountain size={18} />;
     case HeritageCategory.Monument:
       return <Landmark size={18} />;
+
+    case HeritageCategory.SacredGrove:
+      return <Mountain size={18} />;
+
+    case HeritageCategory.FolkloreSite:
+      return <BookOpen size={18} />;
+
+    case HeritageCategory.AncientRuins:
+      return <Landmark size={18} />;
+
+    case HeritageCategory.TraditionalCraftHub:
+      return <Palette size={18} />;
+
     default:
       return <MapPin size={18} />;
   }

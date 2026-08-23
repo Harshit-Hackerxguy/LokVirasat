@@ -8,9 +8,16 @@ import {
   Mic,
   CheckCircle,
   Upload,
+  FileText,
+  ShieldCheck,
 } from 'lucide-react';
 
-import { HeritageCategory, HeritageLead } from '@/types';
+import {
+  HeritageCategory,
+  HeritageLead,
+} from '@/types';
+
+import './HeritageLeadModal.css';
 
 interface HeritageLeadModalProps {
   lead: HeritageLead | null;
@@ -40,9 +47,7 @@ export default function HeritageLeadModal({
   ) => {
     if (!event.target.files) return;
 
-    setPhotos(
-      Array.from(event.target.files)
-    );
+    setPhotos(Array.from(event.target.files));
   };
 
   const handleSubmit = () => {
@@ -79,317 +84,484 @@ export default function HeritageLeadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 p-4">
+    <div className="heritage-modal-overlay">
+      <div className="heritage-modal">
 
-      <div className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        {/* =====================================================
+            HEADER
+        ===================================================== */}
 
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              Document Heritage Site
-            </h2>
+        <div className="heritage-modal-header">
+          <div className="heritage-modal-title-area">
 
-            <p className="mt-1 text-sm text-gray-500">
-              Help turn this community-reported lead
-              into a documented heritage site.
-            </p>
+            <div className="heritage-modal-title-icon">
+              <FileText className="h-5 w-5" />
+            </div>
+
+            <div>
+              <h2 className="heritage-modal-title">
+                Document Heritage Site
+              </h2>
+
+              <p className="heritage-modal-subtitle">
+                Turn a community-reported lead into a verified
+                heritage record.
+              </p>
+            </div>
+
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            className="heritage-modal-close"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="overflow-y-auto px-6 py-6">
+        {/* =====================================================
+            SCROLLABLE BODY
+        ===================================================== */}
 
-          {/* Lead information */}
-          <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
+        <div className="heritage-modal-body">
 
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
-                <MapPin className="h-5 w-5" />
+          {/* =================================================
+              COMMUNITY LEAD
+          ================================================= */}
+
+          <section className="heritage-section">
+
+            <div className="heritage-lead-label-row">
+              <span className="heritage-lead-label">
+                Community Lead
+              </span>
+
+              <span className="heritage-status-pill">
+                Needs Documentation
+              </span>
+            </div>
+
+            <div className="heritage-lead-card">
+
+              <div className="heritage-lead-main">
+
+                <div className="heritage-lead-icon">
+                  <MapPin className="h-5 w-5" />
+                </div>
+
+                <div>
+                  <h3 className="heritage-lead-name">
+                    {lead.name}
+                  </h3>
+
+                  <p className="heritage-lead-location">
+                    {lead.villageOrArea}
+                  </p>
+
+                  <p className="heritage-lead-meta">
+                    Reported by {lead.submittedBy} ·{' '}
+                    {lead.submittedAt}
+                  </p>
+                </div>
+
+              </div>
+
+              <p className="heritage-lead-description">
+                {lead.description}
+              </p>
+
+            </div>
+
+          </section>
+
+          {/* =================================================
+              SITE INFORMATION
+          ================================================= */}
+
+          <section className="heritage-section">
+
+            <div className="heritage-section-heading">
+
+              <div className="heritage-section-icon">
+                <FileText className="h-4 w-4" />
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-900">
-                  {lead.name}
+                <h3 className="heritage-section-title">
+                  Site Information
                 </h3>
 
-                <p className="mt-1 text-sm text-gray-600">
-                  {lead.villageOrArea}
-                </p>
-
-                <p className="mt-1 text-xs text-gray-500">
-                  Reported by {lead.submittedBy}
+                <p className="heritage-section-description">
+                  Add the verified details of the heritage site.
                 </p>
               </div>
+
             </div>
 
-            <p className="mt-3 text-sm leading-6 text-gray-600">
-              {lead.description}
-            </p>
-          </div>
+            <div className="heritage-form-grid">
 
-          {/* Site name */}
-          <div className="mb-5">
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Heritage Site Name
-            </label>
+              {/* Site name */}
+              <div className="heritage-field">
 
-            <input
-              type="text"
-              value={siteName}
-              onChange={(e) =>
-                setSiteName(e.target.value)
-              }
-              placeholder={lead.name}
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-          </div>
+                <label className="heritage-label">
+                  Heritage Site Name
+                </label>
 
-          {/* Category */}
-          <div className="mb-5">
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Heritage Category
-            </label>
-
-            <select
-              value={category}
-              onChange={(e) =>
-                setCategory(
-                  e.target.value as HeritageCategory
-                )
-              }
-              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            >
-              <option value="">
-                Select category
-              </option>
-
-              <option value={HeritageCategory.Monument}>
-                Monument
-              </option>
-
-              <option value={HeritageCategory.SacredGrove}>
-                Sacred Grove
-              </option>
-
-              <option value={HeritageCategory.FolkloreSite}>
-                Folklore Site
-              </option>
-
-              <option value={HeritageCategory.AncientRuins}>
-                Ancient Ruins
-              </option>
-
-              <option value={HeritageCategory.TraditionalCraftHub}>
-                Traditional Craft Hub
-              </option>
-            </select>
-          </div>
-
-          {/* Description */}
-          <div className="mb-5">
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Site Description
-            </label>
-
-            <textarea
-              value={description}
-              onChange={(e) =>
-                setDescription(e.target.value)
-              }
-              placeholder="Describe the site's appearance, significance, architecture, traditions, or other useful information."
-              rows={4}
-              className="w-full resize-none rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-          </div>
-
-          {/* Historical information */}
-          <div className="mb-5">
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Historical / Cultural Information
-            </label>
-
-            <textarea
-              value={history}
-              onChange={(e) =>
-                setHistory(e.target.value)
-              }
-              placeholder="Add information collected from local residents, historians, community members, or available records."
-              rows={4}
-              className="w-full resize-none rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-          </div>
-
-          {/* Photos */}
-          <div className="mb-5">
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Site Photographs
-            </label>
-
-            <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-8 text-center transition hover:border-blue-400 hover:bg-blue-50">
-
-              <Camera className="h-8 w-8 text-gray-400" />
-
-              <span className="mt-2 text-sm font-semibold text-gray-700">
-                Upload photographs
-              </span>
-
-              <span className="mt-1 text-xs text-gray-500">
-                Add photographs of the site,
-                structure, surroundings, or artifacts.
-              </span>
-
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
-            </label>
-
-            {photos.length > 0 && (
-              <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                {photos.length} photograph
-                {photos.length !== 1 ? 's' : ''} selected
-              </div>
-            )}
-          </div>
-
-          {/* GPS */}
-          <div className="mb-5 rounded-xl border border-gray-200 p-4">
-
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-600">
-                <MapPin className="h-5 w-5" />
-              </div>
-
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">
-                  Location Verification
-                </h3>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Confirm that you are physically near
-                  the heritage site while documenting it.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLocationVerified(true)
+                <input
+                  type="text"
+                  value={siteName}
+                  onChange={(e) =>
+                    setSiteName(e.target.value)
                   }
-                  className={`mt-3 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${
-                    locationVerified
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                >
-                  {locationVerified ? (
-                    <>
-                      <CheckCircle className="h-4 w-4" />
-                      Location Verified
-                    </>
-                  ) : (
-                    <>
-                      <MapPin className="h-4 w-4" />
-                      Verify My Location
-                    </>
-                  )}
-                </button>
+                  placeholder={lead.name}
+                  className="heritage-input"
+                />
+
               </div>
+
+              {/* Category */}
+              <div className="heritage-field">
+
+                <label className="heritage-label">
+                  Heritage Category
+                </label>
+
+                <select
+                  value={category}
+                  onChange={(e) =>
+                    setCategory(
+                      e.target.value as HeritageCategory
+                    )
+                  }
+                  className="heritage-select"
+                >
+                  <option value="">
+                    Select category
+                  </option>
+
+                  <option value={HeritageCategory.Monument}>
+                    Monument
+                  </option>
+
+                  <option
+                    value={HeritageCategory.SacredGrove}
+                  >
+                    Sacred Grove
+                  </option>
+
+                  <option
+                    value={HeritageCategory.FolkloreSite}
+                  >
+                    Folklore Site
+                  </option>
+
+                  <option
+                    value={HeritageCategory.AncientRuins}
+                  >
+                    Ancient Ruins
+                  </option>
+
+                  <option
+                    value={
+                      HeritageCategory.TraditionalCraftHub
+                    }
+                  >
+                    Traditional Craft Hub
+                  </option>
+                </select>
+
+              </div>
+
+              {/* Description */}
+              <div className="heritage-field heritage-form-full">
+
+                <label className="heritage-label">
+                  Site Description
+                </label>
+
+                <textarea
+                  value={description}
+                  onChange={(e) =>
+                    setDescription(e.target.value)
+                  }
+                  placeholder="Describe the site's appearance, architecture, significance, traditions, or other useful information."
+                  className="heritage-textarea"
+                  rows={3}
+                />
+
+              </div>
+
+              {/* Historical information */}
+              <div className="heritage-field heritage-form-full">
+
+                <label className="heritage-label">
+                  Historical / Cultural Information
+                </label>
+
+                <textarea
+                  value={history}
+                  onChange={(e) =>
+                    setHistory(e.target.value)
+                  }
+                  placeholder="Add information collected from local residents, historians, community members, or available records."
+                  className="heritage-textarea"
+                  rows={3}
+                />
+
+              </div>
+
             </div>
 
-          </div>
+          </section>
 
-          {/* Oral story */}
-          <div className="mb-5 rounded-xl border border-purple-100 bg-purple-50 p-4">
+          {/* =================================================
+              EVIDENCE & VERIFICATION
+          ================================================= */}
 
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-600 text-white">
-                <Mic className="h-5 w-5" />
+          <section className="heritage-section">
+
+            <div className="heritage-section-heading">
+
+              <div className="heritage-section-icon">
+                <ShieldCheck className="h-4 w-4" />
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-900">
-                  Local Story / Oral History
+                <h3 className="heritage-section-title">
+                  Evidence & Verification
                 </h3>
 
-                <p className="mt-1 text-sm text-gray-600">
-                  Record folklore, stories, traditions,
-                  or historical accounts shared by local
-                  community members.
+                <p className="heritage-section-description">
+                  Provide evidence that supports the
+                  documentation.
                 </p>
-
-                <button
-                  type="button"
-                  className="mt-3 rounded-lg border border-purple-200 bg-white px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100"
-                  onClick={() => {
-                    alert(
-                      'StoryRecorder will be connected here next.'
-                    );
-                  }}
-                >
-                  Record Local Story
-                </button>
               </div>
+
             </div>
 
-          </div>
+            <div className="heritage-evidence-grid">
 
-          {/* Submission result */}
-          {submitted && (
-            <div className="mb-5 flex items-start gap-3 rounded-xl bg-green-50 p-4 text-green-700">
+              {/* Photos */}
+              <label className="heritage-upload">
 
-              <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                <div className="heritage-upload-icon">
+                  <Camera className="h-5 w-5" />
+                </div>
+
+                <span className="heritage-upload-title">
+                  Upload photographs
+                </span>
+
+                <span className="heritage-upload-description">
+                  Structure, surroundings, artifacts or
+                  cultural activity
+                </span>
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handlePhotoChange}
+                />
+
+                {photos.length > 0 && (
+                  <span className="heritage-upload-success">
+                    <CheckCircle className="h-3.5 w-3.5" />
+
+                    {photos.length} photo
+                    {photos.length !== 1 ? 's' : ''} selected
+                  </span>
+                )}
+
+              </label>
+
+              {/* Location verification */}
+              <div className="heritage-verification-card">
+
+                <div className="heritage-verification-icon">
+                  <MapPin className="h-5 w-5" />
+                </div>
+
+                <div className="heritage-verification-content">
+
+                  <h3 className="heritage-verification-title">
+
+                    Location Verification
+
+                    {locationVerified && (
+                      <span className="heritage-verified-pill">
+                        VERIFIED
+                      </span>
+                    )}
+
+                  </h3>
+
+                  <p className="heritage-verification-description">
+                    Confirm that you are physically near
+                    the heritage site while documenting it.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLocationVerified(true)
+                    }
+                    className={`heritage-action-button ${
+                      locationVerified ? 'verified' : ''
+                    }`}
+                  >
+                    {locationVerified ? (
+                      <>
+                        <CheckCircle className="h-4 w-4" />
+                        Location Verified
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="h-4 w-4" />
+                        Verify Location
+                      </>
+                    )}
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </section>
+
+          {/* =================================================
+              INTANGIBLE HERITAGE
+          ================================================= */}
+
+          <section className="heritage-section">
+
+            <div className="heritage-section-heading">
+
+              <div className="heritage-section-icon">
+                <Mic className="h-4 w-4" />
+              </div>
 
               <div>
-                <p className="font-semibold">
-                  Documentation submitted
-                </p>
+                <h3 className="heritage-section-title">
+                  Intangible Heritage
+                </h3>
 
-                <p className="mt-1 text-sm">
-                  The contribution is now ready for
-                  verification and moderation.
+                <p className="heritage-section-description">
+                  Preserve stories, folklore and traditions
+                  from the local community.
                 </p>
               </div>
 
             </div>
+
+            <div className="heritage-story-card">
+
+              <div className="heritage-story-left">
+
+                <div className="heritage-story-icon">
+                  <Mic className="h-5 w-5" />
+                </div>
+
+                <div>
+                  <h3 className="heritage-story-title">
+                    Local Story & Oral History
+                  </h3>
+
+                  <p className="heritage-story-description">
+                    Record a story, folklore or historical
+                    account in the local language.
+                  </p>
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                className="heritage-story-button"
+                onClick={() => {
+                  alert(
+                    'StoryRecorder will be connected here next.'
+                  );
+                }}
+              >
+                <Mic className="h-4 w-4" />
+                Record Story
+              </button>
+
+            </div>
+
+          </section>
+
+          {/* =================================================
+              SUBMISSION RESULT
+          ================================================= */}
+
+          {submitted && (
+            <section className="heritage-section">
+
+              <div className="heritage-success">
+
+                <CheckCircle
+                  className="heritage-success-icon h-5 w-5"
+                />
+
+                <div>
+                  <p className="heritage-success-title">
+                    Documentation submitted
+                  </p>
+
+                  <p className="heritage-success-text">
+                    The contribution is now ready for
+                    verification and moderation.
+                  </p>
+                </div>
+
+              </div>
+
+            </section>
           )}
 
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4">
+        {/* =====================================================
+            FOOTER
+        ===================================================== */}
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100"
-          >
-            Cancel
-          </button>
+        <div className="heritage-modal-footer">
 
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitted}
-            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Upload className="h-4 w-4" />
-            {submitted
-              ? 'Submitted'
-              : 'Submit for Verification'}
-          </button>
+          <div className="heritage-footer-note">
+            <ShieldCheck className="h-4 w-4" />
+            Contribution will be reviewed before publication.
+          </div>
+
+          <div className="heritage-footer-actions">
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="heritage-cancel-button"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitted}
+              className="heritage-submit-button"
+            >
+              <Upload className="h-4 w-4" />
+
+              {submitted
+                ? 'Submitted'
+                : 'Submit for Verification'}
+            </button>
+
+          </div>
 
         </div>
 
