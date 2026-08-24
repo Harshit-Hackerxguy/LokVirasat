@@ -5,12 +5,20 @@ import { Plus } from 'lucide-react';
 import { useMapStore } from '@/store/useMapStore';
 import AddHeritageModal from '@/components/forms/AddHeritageModal';
 
-interface InteractiveMapProps {
-  /** If provided, the map will fly to this site */
-  activeSiteId?: string | null;
+import { HERITAGE_SITES } from '@/data/heritageSites';
+import { HERITAGE_LEADS } from '@/data/heritageLeads';
 
-  /** Callback when a marker is clicked */
+
+import {
+  HeritageSite,
+  HeritageLead,
+} from '@/types';
+
+interface InteractiveMapProps {
+  activeSiteId?: string | null;
   onMarkerClick?: (siteId: string) => void;
+  heritageSites?: HeritageSite[];
+  heritageLeads?: HeritageLead[];
 }
 
 const Map = dynamic(() => import('./MapComponent'), {
@@ -31,13 +39,17 @@ export default function InteractiveMap(props: InteractiveMapProps) {
         className="interactive-map-wrapper w-full h-full relative"
         style={{ minHeight: '100vh' }}
       >
-        <Map {...props} />
+        <Map
+  {...props}
+  heritageSites={props.heritageSites ?? []}
+  heritageLeads={props.heritageLeads ?? []}
+/>
       </div>
 
       {/* Report a lesser-known heritage location */}
       <button
         onClick={() => setModalOpen(true)}
-        className="fixed bottom-6 right-6 z-[1000] bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-full px-6 py-3 font-semibold flex items-center gap-2 transition-transform hover:scale-105"
+        className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-full px-6 py-3 font-semibold flex items-center gap-2 transition-transform hover:scale-105"
       >
         <Plus className="w-5 h-5" />
         Report Heritage Site

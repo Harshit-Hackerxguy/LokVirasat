@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import {
   MapPin,
@@ -11,13 +11,16 @@ import {
   Palette,
   ChevronRight,
   Layers,
+  ShieldCheck,
 } from 'lucide-react';
 
 import { HERITAGE_SITES } from '@/data/heritageSites';
 import { HERITAGE_LEADS } from '@/data/heritageLeads';
+
 import {
   HeritageCategory,
   HeritageSite,
+  HeritageLead,
 } from '@/types';
 
 import HeritageSiteDetails from '@/components/heritage/HeritageSiteDetails';
@@ -28,6 +31,8 @@ const InteractiveMap = dynamic(
     ssr: false,
   }
 );
+
+const STORAGE_KEY = 'lokvirasat-heritage-leads';
 
 function CategoryIcon({
   category,
@@ -55,6 +60,26 @@ function CategoryIcon({
   }
 }
 
+function convertVerifiedLeadToSite(
+  lead: HeritageLead
+): HeritageSite {
+  return {
+    id: `verified-${lead.id}`,
+    name: lead.name,
+    coordinates: lead.approximateLocation,
+    description: lead.description,
+    category: lead.category,
+    zoomLevel: 15,
+    pitch: 45,
+    bearing: 0,
+    verificationStatus: 'community-verified',
+    lastUpdated: new Date()
+      .toISOString()
+      .split('T')[0],
+    images: [],
+  };
+}
+
 export default function MapPage() {
   const [activeSiteId, setActiveSiteId] =
     useState<string | null>(null);
@@ -68,14 +93,101 @@ export default function MapPage() {
   const [detailsOpen, setDetailsOpen] =
     useState(false);
 
+  const [verifiedLeads, setVerifiedLeads] =
+    useState<HeritageLead[]>([]);
+
+  /*
+   * Load verified contributions from localStorage.
+   */
+  useEffect(() => {
+    try {
+      const saved =
+        window.localStorage.getItem(STORAGE_KEY);
+
+      if (!saved) {
+        setVerifiedLeads([]);
+        return;
+      }
+
+      const parsed =
+        JSON.parse(saved) as HeritageLead[];
+
+      if (Array.isArray(parsed)) {
+        setVerifiedLeads(
+          parsed.filter(
+            (lead) => lead.status === 'verified'
+          )
+        );
+      }
+    } catch (error) {
+      console.error(
+        'Failed to load verified heritage leads:',
+        error
+      );
+
+      setVerifiedLeads([]);
+    }
+  }, []);
+
+  /*
+   * Combine permanent heritage sites with
+   * moderator-verified community submissions.
+   */
+  const allHeritageSites = useMemo(() => {
+    const verifiedSites =
+      verifiedLeads.map(
+        convertVerifiedLeadToSite
+      );
+
+    return [
+      ...HERITAGE_SITES,
+      ...verifiedSites,
+    ];
+  }, [verifiedLeads]);
+
+  /*
+   * Leads that are NOT verified yet.
+   */
+  const pendingLeads = useMemo(() => {
+    try {
+      const saved =
+        window.localStorage.getItem(STORAGE_KEY);
+
+      if (!saved) {
+        return HERITAGE_LEADS.filter(
+          (lead) => lead.status !== 'verified'
+        );
+      }
+
+      const parsed =
+        JSON.parse(saved) as HeritageLead[];
+
+      if (!Array.isArray(parsed)) {
+        return HERITAGE_LEADS.filter(
+          (lead) => lead.status !== 'verified'
+        );
+      }
+
+      return parsed.filter(
+        (lead) => lead.status !== 'verified'
+      );
+    } catch {
+      return HERITAGE_LEADS.filter(
+        (lead) => lead.status !== 'verified'
+      );
+    }
+  }, [verifiedLeads]);
+
   const handleMarkerClick = useCallback(
     (markerId: string) => {
-      // Normal heritage site
+      /*
+       * Normal / verified heritage site
+       */
       if (!markerId.startsWith('lead:')) {
         setActiveSiteId(markerId);
         setSidebarOpen(true);
 
-        const site = HERITAGE_SITES.find(
+        const site = allHeritageSites.find(
           (item) => item.id === markerId
         );
 
@@ -87,10 +199,13 @@ export default function MapPage() {
         return;
       }
 
-      // Heritage lead
-      const leadId = markerId.replace('lead:', '');
+      /*
+       * Heritage lead
+       */
+      const leadId =
+        markerId.replace('lead:', '');
 
-      const lead = HERITAGE_LEADS.find(
+      const lead = pendingLeads.find(
         (item) => item.id === leadId
       );
 
@@ -108,14 +223,14 @@ export default function MapPage() {
         );
       }
     },
-    []
+    [allHeritageSites, pendingLeads]
   );
 
   const handleSiteSelect = useCallback(
     (siteId: string) => {
       setActiveSiteId(siteId);
 
-      const site = HERITAGE_SITES.find(
+      const site = allHeritageSites.find(
         (item) => item.id === siteId
       );
 
@@ -124,7 +239,7 @@ export default function MapPage() {
         setDetailsOpen(true);
       }
     },
-    []
+    [allHeritageSites]
   );
 
   const handleCloseDetails = useCallback(() => {
@@ -139,6 +254,8 @@ export default function MapPage() {
       <InteractiveMap
         activeSiteId={activeSiteId}
         onMarkerClick={handleMarkerClick}
+        heritageSites={allHeritageSites}
+        heritageLeads={pendingLeads}
       />
 
       {/* Sidebar toggle */}
@@ -146,7 +263,9 @@ export default function MapPage() {
         className={`map-sidebar-toggle ${
           sidebarOpen ? 'open' : ''
         }`}
-        onClick={() => setSidebarOpen(!sidebarOpen)}
+        onClick={() =>
+          setSidebarOpen(!sidebarOpen)
+        }
         aria-label={
           sidebarOpen
             ? 'Close sidebar'
@@ -167,17 +286,21 @@ export default function MapPage() {
             <h2>Heritage Sites</h2>
 
             <span className="map-sidebar-count">
-              {HERITAGE_SITES.length} documented sites
+              {allHeritageSites.length} documented sites
             </span>
           </div>
         </div>
 
         <div className="map-sidebar-list">
 
-          {/* Documented heritage sites */}
-          {HERITAGE_SITES.map((site) => {
+          {/* Documented + verified heritage sites */}
+          {allHeritageSites.map((site) => {
             const isActive =
               activeSiteId === site.id;
+
+            const isCommunityVerified =
+              site.verificationStatus ===
+              'community-verified';
 
             return (
               <button
@@ -196,6 +319,7 @@ export default function MapPage() {
                 </div>
 
                 <div className="map-sidebar-item-info">
+
                   <span className="map-sidebar-item-name">
                     {site.name}
                   </span>
@@ -203,6 +327,14 @@ export default function MapPage() {
                   <span className="map-sidebar-item-category">
                     {site.category}
                   </span>
+
+                  {isCommunityVerified && (
+                    <span className="mt-1 flex items-center gap-1 text-xs font-semibold text-blue-600">
+                      <ShieldCheck size={12} />
+                      Community Verified
+                    </span>
+                  )}
+
                 </div>
 
                 <ChevronRight
@@ -214,7 +346,7 @@ export default function MapPage() {
           })}
 
           {/* Heritage leads */}
-          {HERITAGE_LEADS.length > 0 && (
+          {pendingLeads.length > 0 && (
             <>
               <div className="px-4 pt-5 pb-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -222,7 +354,7 @@ export default function MapPage() {
                 </div>
               </div>
 
-              {HERITAGE_LEADS.map((lead) => (
+              {pendingLeads.map((lead) => (
                 <button
                   key={lead.id}
                   type="button"

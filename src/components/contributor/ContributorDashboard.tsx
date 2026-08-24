@@ -8,6 +8,7 @@ import {
   Clock,
 } from 'lucide-react';
 
+import './ContributorDashboard.css';
 import { HERITAGE_LEADS } from '@/data/heritageLeads';
 import { HeritageLead } from '@/types';
 import HeritageLeadCard from './HeritageLeadCard';
@@ -222,240 +223,239 @@ export default function ContributorDashboard({
     setProgressLead(null);
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    return (
+    <div className="contributor-page">
 
-      <div className="mx-auto max-w-7xl">
+      <div className="contributor-container">
 
-        {/* =================================================
-            HEADER
-        ================================================= */}
+        {/* HEADER */}
+        <section className="contributor-hero">
 
-        <div className="mb-8">
+          <div className="contributor-hero-content">
 
-          <div className="flex items-center gap-3">
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white">
-              <MapPin className="h-6 w-6" />
+            <div className="contributor-eyebrow">
+              CONTRIBUTOR PORTAL
             </div>
+
+            <h1 className="contributor-title">
+              Preserve India&apos;s
+              <span> Living Heritage</span>
+            </h1>
+
+            <p className="contributor-subtitle">
+              Help document India&apos;s lesser-known heritage
+              by collecting stories, evidence, and local knowledge.
+            </p>
+
+          </div>
+
+          <div className="contributor-hero-badge">
+            <MapPin className="h-5 w-5" />
 
             <div>
+              <span>Contributor Access</span>
+              <strong>Heritage Documentation</strong>
+            </div>
+          </div>
 
-              <h1 className="text-2xl font-bold text-gray-900">
-                Heritage Contributor
-              </h1>
+        </section>
 
-              <p className="text-sm text-gray-500">
-                Help document India's lesser-known heritage.
-              </p>
 
+        {/* STATS */}
+        <section className="contributor-stats">
+
+          <div className="contributor-stat-card">
+
+            <div className="contributor-stat-content">
+              <span className="contributor-stat-label">
+                Total Leads
+              </span>
+
+              <span className="contributor-stat-value">
+                {leads.length}
+              </span>
+
+              <span className="contributor-stat-description">
+                Community-reported heritage
+              </span>
+            </div>
+
+            <div className="contributor-stat-icon blue">
+              <ClipboardList className="h-5 w-5" />
             </div>
 
           </div>
 
-        </div>
 
-        {/* =================================================
-            STATS
-        ================================================= */}
+          <div className="contributor-stat-card">
 
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="contributor-stat-content">
+              <span className="contributor-stat-label">
+                Available
+              </span>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <span className="contributor-stat-value blue-text">
+                {availableCount}
+              </span>
 
-            <div className="flex items-center justify-between">
+              <span className="contributor-stat-description">
+                Ready to document
+              </span>
+            </div>
 
-              <div>
-
-                <p className="text-sm text-gray-500">
-                  Total Leads
-                </p>
-
-                <p className="mt-1 text-2xl font-bold text-gray-900">
-                  {leads.length}
-                </p>
-
-              </div>
-
-              <ClipboardList className="h-6 w-6 text-blue-600" />
-
+            <div className="contributor-stat-icon blue">
+              <Clock className="h-5 w-5" />
             </div>
 
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
 
-            <div className="flex items-center justify-between">
+          <div className="contributor-stat-card">
 
-              <div>
+            <div className="contributor-stat-content">
+              <span className="contributor-stat-label">
+                Claimed
+              </span>
 
-                <p className="text-sm text-gray-500">
-                  Available
-                </p>
+              <span className="contributor-stat-value blue-text">
+                {claimedCount}
+              </span>
 
-                <p className="mt-1 text-2xl font-bold text-amber-600">
-                  {availableCount}
-                </p>
+              <span className="contributor-stat-description">
+                Currently being documented
+              </span>
+            </div>
 
-              </div>
-
-              <Clock className="h-6 w-6 text-amber-500" />
-
+            <div className="contributor-stat-icon blue">
+              <MapPin className="h-5 w-5" />
             </div>
 
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
 
-            <div className="flex items-center justify-between">
+          <div className="contributor-stat-card">
 
-              <div>
+            <div className="contributor-stat-content">
+              <span className="contributor-stat-label">
+                Completed
+              </span>
 
-                <p className="text-sm text-gray-500">
-                  Claimed
-                </p>
+              <span className="contributor-stat-value green">
+                {completedCount}
+              </span>
 
-                <p className="mt-1 text-2xl font-bold text-blue-600">
-                  {claimedCount}
-                </p>
+              <span className="contributor-stat-description">
+                Documentation submitted
+              </span>
+            </div>
 
-              </div>
-
-              <MapPin className="h-6 w-6 text-blue-500" />
-
+            <div className="contributor-stat-icon green">
+              <CheckCircle className="h-5 w-5" />
             </div>
 
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        </section>
 
-            <div className="flex items-center justify-between">
 
-              <div>
+        {/* FILTERS */}
+        <section className="contributor-controls">
 
-                <p className="text-sm text-gray-500">
-                  Completed
-                </p>
+          <div className="contributor-filter-group">
 
-                <p className="mt-1 text-2xl font-bold text-green-600">
-                  {completedCount}
-                </p>
+            <button
+              type="button"
+              onClick={() => setFilter('all')}
+              className={`contributor-filter ${
+                filter === 'all' ? 'active' : ''
+              }`}
+            >
+              All
+            </button>
 
-              </div>
+            <button
+              type="button"
+              onClick={() => setFilter('available')}
+              className={`contributor-filter ${
+                filter === 'available' ? 'active' : ''
+              }`}
+            >
+              Available
+            </button>
 
-              <CheckCircle className="h-6 w-6 text-green-500" />
+            <button
+              type="button"
+              onClick={() => setFilter('claimed')}
+              className={`contributor-filter ${
+                filter === 'claimed' ? 'active' : ''
+              }`}
+            >
+              Claimed
+            </button>
 
-            </div>
+            <button
+              type="button"
+              onClick={() => setFilter('completed')}
+              className={`contributor-filter ${
+                filter === 'completed' ? 'active' : ''
+              }`}
+            >
+              Completed
+            </button>
 
           </div>
 
-        </div>
+        </section>
 
-        {/* =================================================
-            FILTERS
-        ================================================= */}
 
-        <div className="mb-6 flex flex-wrap gap-2">
+        {/* LEADS HEADER */}
+        <section className="contributor-leads-header">
 
-          <button
-            type="button"
-            onClick={() => setFilter('all')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              filter === 'all'
-                ? 'bg-gray-900 text-white'
-                : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            All
-          </button>
+          <div>
+            <h2>Heritage Leads</h2>
 
-          <button
-            type="button"
-            onClick={() => setFilter('available')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              filter === 'available'
-                ? 'bg-blue-600 text-white'
-                : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Available
-          </button>
+            <p>
+              Community-reported locations awaiting
+              documentation or verification.
+            </p>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setFilter('claimed')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              filter === 'claimed'
-                ? 'bg-blue-600 text-white'
-                : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Claimed
-          </button>
+          <span className="contributor-result-count">
+            {filteredLeads.length} leads
+          </span>
 
-          <button
-            type="button"
-            onClick={() => setFilter('completed')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              filter === 'completed'
-                ? 'bg-green-600 text-white'
-                : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Completed
-          </button>
+        </section>
 
-        </div>
 
-        {/* =================================================
-            LEADS HEADER
-        ================================================= */}
-
-        <div className="mb-4">
-
-          <h2 className="text-lg font-bold text-gray-900">
-            Heritage Leads
-          </h2>
-
-          <p className="mt-1 text-sm text-gray-500">
-            Community-reported locations awaiting
-            documentation or verification.
-          </p>
-
-        </div>
-
-        {/* =================================================
-            LEAD GRID
-        ================================================= */}
-
+        {/* LEADS */}
         {filteredLeads.length > 0 ? (
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="contributor-leads-grid">
 
             {filteredLeads.map((lead) => (
-
               <HeritageLeadCard
                 key={lead.id}
                 lead={lead}
                 onClaim={handleClaim}
                 onViewProgress={handleViewProgress}
               />
-
             ))}
 
           </div>
 
         ) : (
 
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center">
+          <div className="contributor-empty">
 
-            <ClipboardList className="mx-auto h-10 w-10 text-gray-300" />
+            <div className="contributor-empty-icon">
+              <ClipboardList className="h-6 w-6" />
+            </div>
 
-            <h3 className="mt-4 font-semibold text-gray-900">
+            <h3>
               No leads found
             </h3>
 
-            <p className="mt-1 text-sm text-gray-500">
+            <p>
               There are no heritage leads in this category.
             </p>
 
@@ -465,10 +465,8 @@ export default function ContributorDashboard({
 
       </div>
 
-      {/* =====================================================
-          DOCUMENTATION MODAL
-      ===================================================== */}
 
+      {/* DOCUMENTATION MODAL */}
       {selectedLead && (
         <HeritageLeadModal
           lead={selectedLead}
@@ -477,10 +475,8 @@ export default function ContributorDashboard({
         />
       )}
 
-      {/* =====================================================
-          CONTRIBUTION PROGRESS MODAL
-      ===================================================== */}
 
+      {/* CONTRIBUTION PROGRESS MODAL */}
       {progressLead && (
         <ContributionStatus
           lead={progressLead}

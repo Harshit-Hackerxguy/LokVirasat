@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import VerifierDashboard from '@/components/verification/VerifierDashboard';
+import RoleGuard from '@/components/auth/RoleGuard';
 
 export default function VerificationPage() {
   const router = useRouter();
@@ -22,5 +23,9 @@ export default function VerificationPage() {
     return null;
   }
 
-  return <VerifierDashboard />;
+  return (
+    <RoleGuard allowedRoles={['moderator']}>
+      <VerifierDashboard />
+    </RoleGuard>
+  );
 }

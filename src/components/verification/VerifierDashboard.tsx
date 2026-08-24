@@ -1,42 +1,78 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import './VerifierDashboard.css';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  ShieldCheck,
-  ClipboardCheck,
-  Clock3,
   CheckCircle2,
-  XCircle,
+  Clock3,
+  FileCheck2,
   MapPin,
-  User,
-  Calendar,
-  FileText,
-  Eye,
+  ShieldCheck,
+  X,
+  XCircle,
 } from 'lucide-react';
 
 import { HeritageLead } from '@/types';
-import VerificationBadge from './VerificationBadge';
+import { HERITAGE_LEADS } from '@/data/heritageLeads';
 
 const STORAGE_KEY = 'lokvirasat-heritage-leads';
 
-type VerificationFilter =
-  | 'pending'
-  | 'verified'
-  | 'all';
+type Filter =
+  | 'all'
+  | 'needs-documentation'
+  | 'claimed'
+  | 'documented'
+  | 'verified';
+
+function StatusBadge({
+  status,
+}: {
+  status: HeritageLead['status'];
+}) {
+  const config = {
+    'needs-documentation': {
+      label: 'Needs Documentation',
+      className: 'status-needs',
+    },
+
+    claimed: {
+      label: 'Claimed',
+      className: 'status-claimed',
+    },
+
+    documented: {
+      label: 'Pending Verification',
+      className: 'status-pending',
+    },
+
+    verified: {
+      label: 'Verified',
+      className: 'status-verified',
+    },
+  };
+
+  const current = config[status];
+
+  return (
+    <span className={`status-badge ${current.className}`}>
+      {current.label}
+    </span>
+  );
+}
 
 export default function VerifierDashboard() {
   const [leads, setLeads] = useState<HeritageLead[]>([]);
-  const [filter, setFilter] =
-    useState<VerificationFilter>('pending');
-
+  const [filter, setFilter] = useState<Filter>('all');
   const [selectedLead, setSelectedLead] =
     useState<HeritageLead | null>(null);
 
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] =
+    useState('');
+
   const [loaded, setLoaded] = useState(false);
 
-  // =========================================================
-  // LOAD SHARED CONTRIBUTOR DATA
-  // =========================================================
+  /* LOAD SHARED CONTRIBUTOR DATA */
 
   useEffect(() => {
     try {
@@ -49,21 +85,25 @@ export default function VerifierDashboard() {
 
         if (Array.isArray(parsed)) {
           setLeads(parsed);
+        } else {
+          setLeads(HERITAGE_LEADS);
         }
+      } else {
+        setLeads(HERITAGE_LEADS);
       }
     } catch (error) {
       console.error(
         'Failed to load verification data:',
         error
       );
+
+      setLeads(HERITAGE_LEADS);
     } finally {
       setLoaded(true);
     }
   }, []);
 
-  // =========================================================
-  // SAVE SHARED DATA
-  // =========================================================
+  /* SAVE SHARED DATA */
 
   useEffect(() => {
     if (!loaded) return;
@@ -81,9 +121,19 @@ export default function VerifierDashboard() {
     }
   }, [leads, loaded]);
 
-  // =========================================================
-  // COUNTS
-  // =========================================================
+  /* FILTER */
+
+  const filteredLeads = useMemo(() => {
+    if (filter === 'all') {
+      return leads;
+    }
+
+    return leads.filter(
+      (lead) => lead.status === filter
+    );
+  }, [leads, filter]);
+
+  /* COUNTS */
 
   const pendingCount = leads.filter(
     (lead) => lead.status === 'documented'
@@ -97,393 +147,276 @@ export default function VerifierDashboard() {
     (lead) => lead.status === 'claimed'
   ).length;
 
-  // =========================================================
-  // FILTER
-  // =========================================================
+  /* APPROVE */
 
-  const filteredLeads = leads.filter((lead) => {
-    switch (filter) {
-      case 'pending':
-        return lead.status === 'documented';
-
-      case 'verified':
-        return lead.status === 'verified';
-
-      default:
-        return (
-          lead.status === 'documented' ||
-          lead.status === 'verified'
-        );
-    }
-  });
-
-  // =========================================================
-  // APPROVE
-  // =========================================================
-
-  const handleApprove = (lead: HeritageLead) => {
-    const verifiedLead: HeritageLead = {
+  const approveLead = (lead: HeritageLead) => {
+    const updated: HeritageLead = {
       ...lead,
       status: 'verified',
     };
 
-    setLeads((currentLeads) =>
-      currentLeads.map((item) =>
-        item.id === lead.id
-          ? verifiedLead
-          : item
+    setLeads((current) =>
+      current.map((item) =>
+        item.id === lead.id ? updated : item
       )
     );
 
     setSelectedLead(null);
+    setRejecting(false);
+    setRejectionReason('');
   };
 
-  // =========================================================
-  // REJECT
-  // =========================================================
+  /* REJECT */
 
-  const handleReject = (lead: HeritageLead) => {
-    /*
-      Prototype behaviour:
-
-      We move the lead back to "claimed" so that
-      the contributor can continue documentation.
-
-      In a production system this would also contain
-      a rejection reason and reviewer information.
-    */
-
-    const rejectedLead: HeritageLead = {
+  const rejectLead = (lead: HeritageLead) => {
+    const updated: HeritageLead = {
       ...lead,
       status: 'claimed',
     };
 
-    setLeads((currentLeads) =>
-      currentLeads.map((item) =>
-        item.id === lead.id
-          ? rejectedLead
-          : item
+    setLeads((current) =>
+      current.map((item) =>
+        item.id === lead.id ? updated : item
       )
     );
 
     setSelectedLead(null);
+    setRejecting(false);
+    setRejectionReason('');
   };
 
-  // =========================================================
-  // STATUS LABEL
-  // =========================================================
+  /* OPEN REVIEW */
 
-  const getStatusLabel = (
-    status: HeritageLead['status']
-  ) => {
-    return status
-      .replace(/-/g, ' ')
-      .replace(/\b\w/g, (char) =>
-        char.toUpperCase()
-      );
+  const openReview = (lead: HeritageLead) => {
+    setSelectedLead(lead);
+    setRejecting(false);
+    setRejectionReason('');
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <main className="verification-page">
 
-      <div className="mx-auto max-w-7xl">
+      {/* HEADER */}
 
-        {/* =================================================
-            HEADER
-        ================================================= */}
+      <section className="verification-header">
+        <div className="verification-header-inner">
 
-        <div className="mb-8">
+          <div className="verification-header-row">
 
-          <div className="flex items-center gap-3">
+            <div>
+              <p className="portal-label">
+                Moderator Portal
+              </p>
 
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-600 text-white">
-              <ShieldCheck className="h-6 w-6" />
+              <h1 className="verification-title">
+                Heritage Verification
+              </h1>
+
+              <p className="verification-subtitle">
+                Review community-documented heritage
+                submissions before they become trusted
+                LokVirasat records.
+              </p>
+            </div>
+
+            <div className="moderator-access">
+              <ShieldCheck className="h-5 w-5" />
+
+              <div>
+                <p className="moderator-access-label">
+                  Moderator Access
+                </p>
+
+                <p className="moderator-access-title">
+                  Verification Dashboard
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      {/* CONTENT */}
+
+      <div className="verification-content">
+
+        {/* STATS */}
+
+        <div className="verification-stats">
+
+          <div className="verification-stat">
+
+            <div className="stat-icon pending">
+              <Clock3 className="h-5 w-5" />
             </div>
 
             <div>
+              <p className="stat-label">
+                Pending Review
+              </p>
 
-              <h1 className="text-2xl font-bold text-gray-900">
-                Verification Dashboard
-              </h1>
+              <p className="stat-value">
+                {pendingCount}
+              </p>
+            </div>
 
-              <p className="text-sm text-gray-500">
-                Review and verify documented heritage
-                contributions.
+          </div>
+
+          <div className="verification-stat">
+
+            <div className="stat-icon claimed">
+              <FileCheck2 className="h-5 w-5" />
+            </div>
+
+            <div>
+              <p className="stat-label">
+                Claimed
+              </p>
+
+              <p className="stat-value">
+                {claimedCount}
+              </p>
+            </div>
+
+          </div>
+
+          <div className="verification-stat">
+
+            <div className="stat-icon verified">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+
+            <div>
+              <p className="stat-label">
+                Verified
+              </p>
+
+              <p className="stat-value">
+                {verifiedCount}
+              </p>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* FILTERS */}
+
+        <div className="verification-filters">
+
+          {(
+            [
+              ['all', 'All'],
+              ['documented', 'Pending Verification'],
+              ['verified', 'Verified'],
+              ['claimed', 'Claimed'],
+              ['needs-documentation', 'Needs Documentation'],
+            ] as [Filter, string][]
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setFilter(value)}
+              className={`verification-filter ${
+                filter === value ? 'active' : ''
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+
+        </div>
+
+        {/* SUBMISSIONS */}
+
+        <div className="verification-submissions">
+
+          {!loaded ? (
+
+            <div className="verification-empty">
+              <p>
+                Loading verification submissions...
+              </p>
+            </div>
+
+          ) : filteredLeads.length === 0 ? (
+
+            <div className="verification-empty">
+
+              <div className="empty-icon">
+                <FileCheck2 className="h-6 w-6" />
+              </div>
+
+              <h2>
+                No submissions found
+              </h2>
+
+              <p>
+                There are no heritage submissions in this
+                category right now.
               </p>
 
             </div>
 
-          </div>
+          ) : (
 
-        </div>
+            filteredLeads.map((lead) => (
 
-        {/* =================================================
-            STATS
-        ================================================= */}
+              <article
+                key={lead.id}
+                className="submission-card"
+              >
 
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="submission-layout">
 
-          {/* Pending */}
+                  <div className="submission-main">
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="submission-heading">
 
-            <div className="flex items-center justify-between">
+                      <h2 className="submission-name">
+                        {lead.name}
+                      </h2>
 
-              <div>
-
-                <p className="text-sm text-gray-500">
-                  Pending Review
-                </p>
-
-                <p className="mt-1 text-2xl font-bold text-amber-600">
-                  {pendingCount}
-                </p>
-
-              </div>
-
-              <Clock3 className="h-6 w-6 text-amber-500" />
-
-            </div>
-
-          </div>
-
-          {/* Verified */}
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
-            <div className="flex items-center justify-between">
-
-              <div>
-
-                <p className="text-sm text-gray-500">
-                  Verified
-                </p>
-
-                <p className="mt-1 text-2xl font-bold text-green-600">
-                  {verifiedCount}
-                </p>
-
-              </div>
-
-              <CheckCircle2 className="h-6 w-6 text-green-500" />
-
-            </div>
-
-          </div>
-
-          {/* Claimed */}
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
-            <div className="flex items-center justify-between">
-
-              <div>
-
-                <p className="text-sm text-gray-500">
-                  In Documentation
-                </p>
-
-                <p className="mt-1 text-2xl font-bold text-blue-600">
-                  {claimedCount}
-                </p>
-
-              </div>
-
-              <FileText className="h-6 w-6 text-blue-500" />
-
-            </div>
-
-          </div>
-
-          {/* Total */}
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
-            <div className="flex items-center justify-between">
-
-              <div>
-
-                <p className="text-sm text-gray-500">
-                  Total Records
-                </p>
-
-                <p className="mt-1 text-2xl font-bold text-gray-900">
-                  {leads.length}
-                </p>
-
-              </div>
-
-              <ClipboardCheck className="h-6 w-6 text-gray-600" />
-
-            </div>
-
-          </div>
-
-        </div>
-
-        {/* =================================================
-            FILTERS
-        ================================================= */}
-
-        <div className="mb-6 flex flex-wrap gap-2">
-
-          <button
-            type="button"
-            onClick={() => setFilter('pending')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              filter === 'pending'
-                ? 'bg-amber-600 text-white'
-                : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Pending
-            <span className="ml-2">
-              {pendingCount}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilter('verified')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              filter === 'verified'
-                ? 'bg-green-600 text-white'
-                : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Verified
-            <span className="ml-2">
-              {verifiedCount}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilter('all')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              filter === 'all'
-                ? 'bg-gray-900 text-white'
-                : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            All
-          </button>
-
-        </div>
-
-        {/* =================================================
-            LIST HEADER
-        ================================================= */}
-
-        <div className="mb-4">
-
-          <h2 className="text-lg font-bold text-gray-900">
-            {filter === 'pending'
-              ? 'Pending Verification'
-              : filter === 'verified'
-                ? 'Verified Heritage Records'
-                : 'Heritage Records'}
-          </h2>
-
-          <p className="mt-1 text-sm text-gray-500">
-            Review documentation submitted by heritage
-            contributors.
-          </p>
-
-        </div>
-
-        {/* =================================================
-            LEADS
-        ================================================= */}
-
-        {filteredLeads.length > 0 ? (
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
-            {filteredLeads.map((lead) => {
-
-              const isPending =
-                lead.status === 'documented';
-
-              return (
-                <article
-                  key={lead.id}
-                  className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
-                >
-
-                  {/* Header */}
-
-                  <div className="flex items-start justify-between gap-4">
-
-                    <div className="flex min-w-0 items-start gap-3">
-
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-600">
-                        <FileText className="h-5 w-5" />
-                      </div>
-
-                      <div className="min-w-0">
-
-                        <h3 className="truncate text-base font-bold text-gray-900">
-                          {lead.name}
-                        </h3>
-
-                        <p className="mt-1 text-sm text-gray-500">
-                          {lead.category}
-                        </p>
-
-                      </div>
+                      <StatusBadge
+                        status={lead.status}
+                      />
 
                     </div>
 
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                        isPending
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-green-100 text-green-700'
-                      }`}
-                    >
-                      {getStatusLabel(lead.status)}
-                    </span>
+                    <p className="submission-category">
+                      {lead.category}
+                    </p>
 
-                  </div>
+                    <p className="submission-description">
+                      {lead.description}
+                    </p>
 
-                  {/* Description */}
+                    <div className="submission-meta">
 
-                  <p className="mt-4 line-clamp-3 text-sm leading-6 text-gray-600">
-                    {lead.description}
-                  </p>
-
-                  {/* Metadata */}
-
-                  <div className="mt-4 space-y-2 border-t border-gray-100 pt-4">
-
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-
-                      <MapPin className="h-4 w-4 shrink-0" />
-
-                      <span>
+                      <span className="submission-meta-item">
+                        <MapPin />
                         {lead.villageOrArea}
                       </span>
 
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-
-                      <User className="h-4 w-4 shrink-0" />
-
-                      <span>
-                        Contributor:{' '}
-                        {lead.assignedContributor ||
-                          'Unknown'}
+                      <span className="submission-meta-item">
+                        Submitted by{' '}
+                        <strong>
+                          {lead.submittedBy}
+                        </strong>
                       </span>
 
-                    </div>
+                      {lead.assignedContributor && (
+                        <span className="submission-meta-item">
+                          Contributor:{' '}
+                          <strong>
+                            {lead.assignedContributor}
+                          </strong>
+                        </span>
+                      )}
 
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-
-                      <Calendar className="h-4 w-4 shrink-0" />
-
-                      <span>
+                      <span className="submission-meta-item">
                         Submitted {lead.submittedAt}
                       </span>
 
@@ -491,208 +424,199 @@ export default function VerifierDashboard() {
 
                   </div>
 
-                  {/* Verification badge */}
+                  <div className="submission-action">
 
-                  <div className="mt-4">
+                    {lead.status === 'documented' ? (
 
-                    <VerificationBadge
-                      status={
-                        lead.status === 'verified'
-                          ? 'authority-verified'
-                          : 'reported'
-                      }
-                      size="sm"
-                    />
+                      <button
+                        type="button"
+                        onClick={() => openReview(lead)}
+                        className="review-button"
+                      >
+                        Review Submission
+                      </button>
 
-                  </div>
+                    ) : lead.status === 'verified' ? (
 
-                  {/* Action */}
+                      <div className="verified-state">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Verified
+                      </div>
 
-                  <div className="mt-5">
+                    ) : (
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedLead(lead)
-                      }
-                      className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${
-                        isPending
-                          ? 'bg-green-600 text-white hover:bg-green-700'
-                          : 'border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
+                      <div className="not-ready">
+                        Not ready for review
+                      </div>
 
-                      <Eye className="h-4 w-4" />
-
-                      {isPending
-                        ? 'Review Submission'
-                        : 'View Record'}
-
-                    </button>
+                    )}
 
                   </div>
 
-                </article>
-              );
-            })}
+                </div>
 
-          </div>
+              </article>
 
-        ) : (
+            ))
 
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center">
+          )}
 
-            <ClipboardCheck className="mx-auto h-10 w-10 text-gray-300" />
-
-            <h3 className="mt-4 font-semibold text-gray-900">
-              No records found
-            </h3>
-
-            <p className="mt-1 text-sm text-gray-500">
-              There are no heritage records in this
-              category.
-            </p>
-
-          </div>
-
-        )}
+        </div>
 
       </div>
 
-      {/* =====================================================
-          REVIEW MODAL
-      ===================================================== */}
+      {/* REVIEW MODAL */}
 
       {selectedLead && (
-        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 p-4">
+        <div className="verification-modal-overlay">
 
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+          <div className="verification-modal">
 
-            {/* Header */}
+            <div className="verification-modal-header">
 
-            <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
+              <div className="verification-modal-title-wrap">
 
-              <div>
-
-                <p className="text-xs font-bold uppercase tracking-wider text-green-600">
-                  Verification Review
+                <p className="verification-modal-label">
+                  Moderator Review
                 </p>
 
-                <h2 className="mt-1 text-xl font-bold text-gray-900">
+                <h2 className="verification-modal-title">
                   {selectedLead.name}
                 </h2>
 
-                <p className="mt-1 text-sm text-gray-500">
-                  Review the submitted heritage documentation.
+                <p className="verification-modal-description">
+                  Review the submitted heritage information
+                  before approving it.
                 </p>
 
               </div>
 
               <button
                 type="button"
-                onClick={() => setSelectedLead(null)}
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                aria-label="Close"
+                onClick={() => {
+                  setSelectedLead(null);
+                  setRejecting(false);
+                  setRejectionReason('');
+                }}
+                className="verification-modal-close"
+                aria-label="Close review"
               >
-                ×
+                <X className="h-5 w-5" />
               </button>
 
             </div>
 
-            {/* Content */}
+            <div className="verification-modal-body">
 
-            <div className="space-y-6 px-6 py-6">
+              <section className="verification-modal-section">
 
-              {/* Status */}
-
-              <div className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
-
-                <div>
-
-                  <p className="text-sm font-semibold text-gray-900">
-                    Submission Status
-                  </p>
-
-                  <p className="mt-1 text-sm text-gray-500">
-                    This record has been documented and is
-                    awaiting verification.
-                  </p>
-
-                </div>
-
-                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-                  Documented
-                </span>
-
-              </div>
-
-              {/* Site information */}
-
-              <section>
-
-                <h3 className="text-base font-bold text-gray-900">
+                <h3 className="verification-section-title">
                   Heritage Information
                 </h3>
 
-                <div className="mt-3 rounded-xl border border-gray-200 p-4">
+                <div className="verification-info-card">
 
-                  <p className="text-sm leading-6 text-gray-600">
-                    {selectedLead.description}
-                  </p>
+                  <div>
+                    <p className="verification-info-label">
+                      Category
+                    </p>
+
+                    <p className="verification-info-value">
+                      {selectedLead.category}
+                    </p>
+                  </div>
+
+                  <div className="verification-description-block">
+                    <p className="verification-info-label">
+                      Description
+                    </p>
+
+                    <p className="verification-info-description">
+                      {selectedLead.description}
+                    </p>
+                  </div>
 
                 </div>
 
               </section>
 
-              {/* Location */}
+              <section className="verification-modal-section">
 
-              <section>
-
-                <h3 className="text-base font-bold text-gray-900">
+                <h3 className="verification-section-title">
                   Location
                 </h3>
 
-                <div className="mt-3 rounded-xl border border-gray-200 p-4">
+                <div className="verification-info-card">
 
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="verification-location">
 
-                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <div className="verification-location-icon">
+                      <MapPin className="h-5 w-5" />
+                    </div>
 
-                    <span>
-                      {selectedLead.villageOrArea}
-                    </span>
+                    <div>
+
+                      <p className="verification-info-value">
+                        {selectedLead.villageOrArea}
+                      </p>
+
+                      <p className="verification-info-description">
+                        Coordinates:{' '}
+                        {selectedLead.approximateLocation[1].toFixed(5)}
+                        ,{' '}
+                        {selectedLead.approximateLocation[0].toFixed(5)}
+                      </p>
+
+                    </div>
 
                   </div>
-
-                  <p className="mt-2 text-xs text-gray-400">
-                    Approximate coordinates:{' '}
-                    {selectedLead.approximateLocation[1].toFixed(4)},
-                    {' '}
-                    {selectedLead.approximateLocation[0].toFixed(4)}
-                  </p>
 
                 </div>
 
               </section>
 
-              {/* Contributor */}
+              <section className="verification-modal-section">
 
-              <section>
-
-                <h3 className="text-base font-bold text-gray-900">
-                  Contributor
+                <h3 className="verification-section-title">
+                  Contribution Details
                 </h3>
 
-                <div className="mt-3 rounded-xl border border-gray-200 p-4">
+                <div className="verification-grid">
 
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="verification-info-card">
 
-                    <User className="h-4 w-4 text-gray-400" />
+                    <p className="verification-info-label">
+                      Submitted By
+                    </p>
 
-                    <span>
+                    <p className="verification-info-value">
+                      {selectedLead.submittedBy}
+                    </p>
+
+                  </div>
+
+                  <div className="verification-info-card">
+
+                    <p className="verification-info-label">
+                      Assigned Contributor
+                    </p>
+
+                    <p className="verification-info-value">
                       {selectedLead.assignedContributor ||
-                        'Unknown Contributor'}
-                    </span>
+                        'Not specified'}
+                    </p>
+
+                  </div>
+
+                  <div className="verification-info-card verification-full">
+
+                    <p className="verification-info-label">
+                      Submitted
+                    </p>
+
+                    <p className="verification-info-value">
+                      {selectedLead.submittedAt}
+                    </p>
 
                   </div>
 
@@ -700,43 +624,105 @@ export default function VerifierDashboard() {
 
               </section>
 
-              {/* =================================================
-                  ACTIONS
-              ================================================= */}
+              <section className="verification-modal-section">
 
-              {selectedLead.status === 'documented' && (
+                <div className="verification-pending-box">
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Clock3 />
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleReject(selectedLead)
-                    }
-                    className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-semibold text-red-700 hover:bg-red-100"
-                  >
+                  <div>
 
-                    <XCircle className="h-5 w-5" />
+                    <p className="verification-pending-title">
+                      Pending moderator verification
+                    </p>
 
-                    Reject
+                    <p className="verification-pending-text">
+                      This contribution has completed
+                      documentation and is waiting for
+                      moderator review.
+                    </p>
 
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleApprove(selectedLead)
-                    }
-                    className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 font-semibold text-white hover:bg-green-700"
-                  >
-
-                    <ShieldCheck className="h-5 w-5" />
-
-                    Approve & Verify
-
-                  </button>
+                  </div>
 
                 </div>
+
+              </section>
+
+              {rejecting && (
+                <section className="verification-rejection">
+
+                  <label htmlFor="rejection-reason">
+                    Reason for rejection
+                  </label>
+
+                  <textarea
+                    id="rejection-reason"
+                    value={rejectionReason}
+                    onChange={(event) =>
+                      setRejectionReason(
+                        event.target.value
+                      )
+                    }
+                    placeholder="Explain what needs to be improved..."
+                    rows={4}
+                  />
+
+                </section>
+              )}
+
+            </div>
+
+            <div className="verification-modal-footer">
+
+              {!rejecting ? (
+
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setRejecting(true)}
+                    className="verification-footer-button verification-footer-reject"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Reject
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      approveLead(selectedLead)
+                    }
+                    className="verification-footer-button verification-footer-approve"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Approve & Verify
+                  </button>
+                </>
+
+              ) : (
+
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRejecting(false);
+                      setRejectionReason('');
+                    }}
+                    className="verification-footer-button verification-footer-cancel"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      rejectLead(selectedLead)
+                    }
+                    className="verification-footer-button verification-footer-confirm-reject"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Reject Submission
+                  </button>
+                </>
 
               )}
 
@@ -747,6 +733,6 @@ export default function VerifierDashboard() {
         </div>
       )}
 
-    </div>
+    </main>
   );
 }

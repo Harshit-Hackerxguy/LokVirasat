@@ -17,8 +17,10 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import L from 'leaflet';
 import 'leaflet.markercluster';
 
-import { HERITAGE_SITES } from '@/data/heritageSites';
-import { HERITAGE_LEADS } from '@/data/heritageLeads';
+import {
+  HeritageSite,
+  HeritageLead,
+} from '@/types';
 
 import { useMapStore } from '@/store/useMapStore';
 import './MapStyles.css';
@@ -88,8 +90,12 @@ function createMarkerIcon(category: string) {
 
 function MarkerClusterGroup({
   onMarkerClick,
+  heritageSites,
+  heritageLeads,
 }: {
   onMarkerClick?: (siteId: string) => void;
+  heritageSites: HeritageSite[];
+  heritageLeads: HeritageLead[];
 }) {
   const map = useMap();
 
@@ -127,7 +133,7 @@ function MarkerClusterGroup({
     // DOCUMENTED HERITAGE SITES
     // ------------------------------------------------
 
-    HERITAGE_SITES.forEach((site) => {
+    heritageSites.forEach((site) => {
       const [lng, lat] = site.coordinates;
 
       const marker = L.marker([lat, lng], {
@@ -139,6 +145,11 @@ function MarkerClusterGroup({
 
       popupContent.className =
         'marker-popup-content';
+
+      const verificationText =
+        site.verificationStatus
+          ?.replace(/-/g, ' ') ||
+        'Reported';
 
       popupContent.innerHTML = `
         <div class="popup-inner">
@@ -172,7 +183,7 @@ function MarkerClusterGroup({
 
             <div class="popup-meta">
               <span>
-                ✓ ${site.verificationStatus?.replace('-', ' ') || 'Reported'}
+                ✓ ${verificationText}
               </span>
             </div>
 
@@ -199,7 +210,7 @@ function MarkerClusterGroup({
     // HERITAGE LEADS
     // ------------------------------------------------
 
-    HERITAGE_LEADS.forEach((lead) => {
+    heritageLeads.forEach((lead) => {
       const [lng, lat] = lead.approximateLocation;
 
       const marker = L.marker([lat, lng], {
@@ -282,7 +293,12 @@ function MarkerClusterGroup({
         map.removeLayer(clusterRef.current);
       }
     };
-  }, [map, onMarkerClick]);
+  }, [
+    map,
+    onMarkerClick,
+    heritageSites,
+    heritageLeads,
+  ]);
 
   return null;
 }
@@ -290,19 +306,23 @@ function MarkerClusterGroup({
 interface MapComponentProps {
   activeSiteId?: string | null;
   onMarkerClick?: (siteId: string) => void;
+  heritageSites: HeritageSite[];
+  heritageLeads: HeritageLead[];
 }
 
 function FlyToActiveSite({
   activeSiteId,
+  heritageSites,
 }: {
   activeSiteId?: string | null;
+  heritageSites: HeritageSite[];
 }) {
   const map = useMap();
 
   useEffect(() => {
     if (!activeSiteId) return;
 
-    const site = HERITAGE_SITES.find(
+    const site = heritageSites.find(
       (s) => s.id === activeSiteId
     );
 
@@ -317,7 +337,7 @@ function FlyToActiveSite({
         }
       );
     }
-  }, [activeSiteId, map]);
+  }, [activeSiteId, map, heritageSites]);
 
   return null;
 }
@@ -406,6 +426,8 @@ function DraggableMarker() {
 export default function MapComponent({
   activeSiteId,
   onMarkerClick,
+  heritageSites,
+  heritageLeads,
 }: MapComponentProps) {
   const center: [number, number] = [
     22.5,
@@ -472,11 +494,14 @@ export default function MapComponent({
         {!isPinningMode && (
           <MarkerClusterGroup
             onMarkerClick={onMarkerClick}
+            heritageSites={heritageSites}
+            heritageLeads={heritageLeads}
           />
         )}
 
         <FlyToActiveSite
           activeSiteId={activeSiteId}
+          heritageSites={heritageSites}
         />
 
         <PinningModeManager />

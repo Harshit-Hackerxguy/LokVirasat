@@ -39,10 +39,7 @@ export default function HeritageLeadCard({
   return (
     <article className="heritage-lead-card">
 
-      {/* =====================================================
-          CARD HEADER
-      ===================================================== */}
-
+      {/* Card Header */}
       <div className="heritage-card-header">
 
         <div className="heritage-card-title-area">
@@ -52,7 +49,6 @@ export default function HeritageLeadCard({
           </div>
 
           <div className="heritage-card-heading">
-
             <h3>
               {lead.name}
             </h3>
@@ -60,7 +56,6 @@ export default function HeritageLeadCard({
             <span>
               {lead.category}
             </span>
-
           </div>
 
         </div>
@@ -85,18 +80,12 @@ export default function HeritageLeadCard({
 
       </div>
 
-      {/* =====================================================
-          DESCRIPTION
-      ===================================================== */}
-
+      {/* Description */}
       <p className="heritage-card-description">
         {lead.description}
       </p>
 
-      {/* =====================================================
-          METADATA
-      ===================================================== */}
-
+      {/* Metadata */}
       <div className="heritage-card-meta">
 
         <div className="heritage-meta-item">
@@ -120,10 +109,7 @@ export default function HeritageLeadCard({
 
       </div>
 
-      {/* =====================================================
-          ASSIGNED CONTRIBUTOR
-      ===================================================== */}
-
+      {/* Assigned Contributor */}
       {lead.assignedContributor && (
         <div className="heritage-assignment">
 
@@ -139,14 +125,10 @@ export default function HeritageLeadCard({
         </div>
       )}
 
-      {/* =====================================================
-          ACTION
-      ===================================================== */}
-
+      {/* Action */}
       <div className="heritage-card-action">
 
         {isAvailable ? (
-
           <button
             type="button"
             onClick={() => onClaim(lead)}
@@ -156,9 +138,7 @@ export default function HeritageLeadCard({
 
             <ChevronRight className="h-4 w-4" />
           </button>
-
         ) : (
-
           <button
             type="button"
             onClick={() => onViewProgress?.(lead)}
@@ -172,7 +152,6 @@ export default function HeritageLeadCard({
 
             <ChevronRight className="h-4 w-4" />
           </button>
-
         )}
 
       </div>
