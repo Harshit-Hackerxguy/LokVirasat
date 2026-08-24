@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
 import {
   MapPin,
   Landmark,
@@ -84,14 +83,6 @@ function convertVerifiedLeadToSite(
 }
 
 export default function MapPage() {
-  const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace('/login');
-    }
-  }, [isAuthenticated, router]);
 
   const [activeSiteId, setActiveSiteId] =
     useState<string | null>(null);
