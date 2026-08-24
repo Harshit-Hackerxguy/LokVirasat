@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import {
   MapPin,
   Landmark,
@@ -24,6 +25,8 @@ import {
 } from '@/types';
 
 import HeritageSiteDetails from '@/components/heritage/HeritageSiteDetails';
+import HeritageLeadDetails from '@/components/heritage/HeritageLeadDetails';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const InteractiveMap = dynamic(
   () => import('@/components/map/InteractiveMap'),
@@ -81,6 +84,15 @@ function convertVerifiedLeadToSite(
 }
 
 export default function MapPage() {
+  const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [isAuthenticated, router]);
+
   const [activeSiteId, setActiveSiteId] =
     useState<string | null>(null);
 
@@ -91,6 +103,12 @@ export default function MapPage() {
     useState<HeritageSite | null>(null);
 
   const [detailsOpen, setDetailsOpen] =
+    useState(false);
+
+  const [detailsLead, setDetailsLead] =
+    useState<HeritageLead | null>(null);
+
+  const [leadDetailsOpen, setLeadDetailsOpen] =
     useState(false);
 
   const [verifiedLeads, setVerifiedLeads] =
@@ -212,15 +230,8 @@ export default function MapPage() {
       if (lead) {
         setActiveSiteId(null);
         setSidebarOpen(true);
-
-        window.alert(
-          `${lead.name}\n\n` +
-            `Heritage Lead\n` +
-            `Location: ${lead.villageOrArea}\n` +
-            `Submitted by: ${lead.submittedBy}\n\n` +
-            `Status: ${lead.status.replace('-', ' ')}\n\n` +
-            `This lead requires documentation by a contributor.`
-        );
+        setDetailsLead(lead);
+        setLeadDetailsOpen(true);
       }
     },
     [allHeritageSites, pendingLeads]
@@ -245,6 +256,11 @@ export default function MapPage() {
   const handleCloseDetails = useCallback(() => {
     setDetailsOpen(false);
     setDetailsSite(null);
+  }, []);
+
+  const handleCloseLeadDetails = useCallback(() => {
+    setLeadDetailsOpen(false);
+    setDetailsLead(null);
   }, []);
 
   return (
@@ -360,13 +376,8 @@ export default function MapPage() {
                   type="button"
                   className="map-sidebar-item"
                   onClick={() => {
-                    window.alert(
-                      `${lead.name}\n\n` +
-                        `Heritage Lead\n` +
-                        `Location: ${lead.villageOrArea}\n` +
-                        `Submitted by: ${lead.submittedBy}\n\n` +
-                        `Status: ${lead.status.replace('-', ' ')}`
-                    );
+                    setDetailsLead(lead);
+                    setLeadDetailsOpen(true);
                   }}
                 >
                   <div className="map-sidebar-item-icon">
@@ -401,11 +412,16 @@ export default function MapPage() {
           site={detailsSite}
           onClose={handleCloseDetails}
           onReportCondition={() => {
-            console.log(
-              'Open condition report for:',
-              detailsSite.id
-            );
+            // Condition report feature – coming soon
           }}
+        />
+      )}
+
+      {/* Heritage lead details */}
+      {leadDetailsOpen && detailsLead && (
+        <HeritageLeadDetails
+          lead={detailsLead}
+          onClose={handleCloseLeadDetails}
         />
       )}
 

@@ -8,24 +8,24 @@ import RoleGuard from '@/components/auth/RoleGuard';
 
 export default function ContributorPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { isAuthenticated, role } = useAuthStore();
 
   useEffect(() => {
-    if (!user) {
+    if (!isAuthenticated) {
       router.replace('/login');
-    } else if (user.role === 'admin') {
+    } else if (role === 'admin') {
       router.replace('/verification');
     }
-  }, [user, router]);
+  }, [isAuthenticated, role, router]);
 
   // Show nothing while redirecting
-  if (!user || user.role !== 'contributor') {
+  if (!isAuthenticated || role !== 'contributor') {
     return null;
   }
 
   return (
     <RoleGuard
-      allowedRoles={['contributor', 'moderator']}
+      allowedRoles={['contributor']}
     >
       <ContributorDashboard />
     </RoleGuard>

@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 
 export default function Header() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { isAuthenticated, username, role, logout } = useAuthStore();
 
   const handleLogout = () => {
     logout();
@@ -54,14 +54,14 @@ export default function Header() {
           </Link>
 
           {/* Auth section */}
-          {user ? (
+          {isAuthenticated ? (
             <div className="header-user">
               <div className="header-user-info">
                 <UserCircle size={20} className="header-user-icon" />
                 <div className="header-user-text">
-                  <span className="header-user-name">{user.name}</span>
-                  <span className={`header-user-role header-user-role--${user.role}`}>
-                    {user.role === 'admin' ? '🛡️ Admin' : '✍️ Contributor'}
+                  <span className="header-user-name">{username ?? 'User'}</span>
+                  <span className={`header-user-role header-user-role--${role}`}>
+                    {role === 'admin' ? '🛡️ Admin' : '✍️ Contributor'}
                   </span>
                 </div>
               </div>

@@ -17,6 +17,7 @@ import {
   Fingerprint,
   ArrowRight,
   AlertCircle,
+  User,
 } from 'lucide-react';
 
 import Link from 'next/link';
@@ -234,11 +235,9 @@ export default function LoginPage() {
   const router = useRouter();
 
   const {
-    user,
-    loginAsAdmin,
-    loginAsContributor,
-    loginError,
-    clearError,
+    isAuthenticated,
+    role: authRole,
+    login,
   } = useAuthStore();
 
   const [role, setRole] =
@@ -247,20 +246,24 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] =
     useState(false);
 
+  const [toastMessage, setToastMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated) {
       router.replace(
-        user.role === 'admin'
-          ? '/verification'
-          : '/contributor'
+        authRole === 'admin'
+          ? '/dashboard'
+          : '/map'
       );
     }
-  }, [user, router]);
+  }, [isAuthenticated, authRole, router]);
 
   const {
     register: regAdmin,
     handleSubmit: hsAdmin,
+    setError: setAdminError,
+    clearErrors: clearAdminErrors,
     formState: { errors: eAdmin },
   } = useForm<AdminFormValues>({
     resolver: zodResolver(adminSchema),
@@ -269,6 +272,8 @@ export default function LoginPage() {
   const {
     register: regContrib,
     handleSubmit: hsContrib,
+    setError: setContribError,
+    clearErrors: clearContribErrors,
     formState: { errors: eContrib },
   } = useForm<ContributorFormValues>({
     resolver: zodResolver(contributorSchema),
@@ -280,22 +285,23 @@ export default function LoginPage() {
     data: AdminFormValues
   ) => {
     setIsLoading(true);
-    clearError();
+    clearAdminErrors('root');
+    setToastMessage(null);
 
     await new Promise((r) =>
       setTimeout(r, 800)
     );
 
-    const success = loginAsAdmin(
-      data.adminId,
-      data.password
-    );
-
-    if (success) {
-      router.push('/verification');
+    if ((data.adminId === 'admin@email.com' || data.adminId === 'GP-AUTH-001') && data.password === 'admin') {
+      login('admin', data.adminId, data.username);
+      setToastMessage({ type: 'success', text: 'Admin login successful!' });
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1000);
+    } else {
+      setAdminError('root', { message: 'Invalid demo credentials. Please try again.' });
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   // ─── Contributor Login ─────────────────────────────────────────────────────
@@ -304,28 +310,31 @@ export default function LoginPage() {
     data: ContributorFormValues
   ) => {
     setIsLoading(true);
-    clearError();
+    clearContribErrors('root');
+    setToastMessage(null);
 
     await new Promise((r) =>
       setTimeout(r, 800)
     );
 
-    const success = loginAsContributor(
-      data.email,
-      data.password
-    );
-
-    if (success) {
-      router.push('/contributor');
+    if (data.email === 'user@email.com' && data.password === 'user') {
+      login('contributor', data.email, data.username);
+      setToastMessage({ type: 'success', text: 'Contributor login successful!' });
+      setTimeout(() => {
+        router.push('/map');
+      }, 1000);
+    } else {
+      setContribError('root', { message: 'Invalid demo credentials. Please try again.' });
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   const handleRoleSwitch = (newRole: Role) => {
     if (!isLoading) {
       setRole(newRole);
-      clearError();
+      clearAdminErrors('root');
+      clearContribErrors('root');
+      setToastMessage(null);
     }
   };
 
@@ -597,7 +606,7 @@ export default function LoginPage() {
             {/* Auth Error Banner */}
 
             <AnimatePresence>
-              {loginError && (
+              {(eAdmin.root?.message || eContrib.root?.message) && (
                 <motion.div
                   initial={{
                     opacity: 0,
@@ -621,7 +630,7 @@ export default function LoginPage() {
                 >
                   <div className="login-auth-error">
                     <AlertCircle size={15} />
-                    <span>{loginError}</span>
+                    <span>{isAdmin ? eAdmin.root?.message : eContrib.root?.message}</span>
                   </div>
                 </motion.div>
               )}
@@ -657,6 +666,16 @@ export default function LoginPage() {
                     onSubmit={hsAdmin(onAdmin)}
                     className="login-form"
                   >
+
+                    <InputField
+                      icon={User}
+                      placeholder="Username"
+                      accentColor="admin"
+                      error={
+                        eAdmin.username?.message
+                      }
+                      {...regAdmin('username')}
+                    />
 
                     <InputField
                       icon={ShieldCheck}
@@ -753,6 +772,16 @@ export default function LoginPage() {
                     onSubmit={hsContrib(onContrib)}
                     className="login-form"
                   >
+
+                    <InputField
+                      icon={User}
+                      placeholder="Username"
+                      accentColor="contrib"
+                      error={
+                        eContrib.username?.message
+                      }
+                      {...regContrib('username')}
+                    />
 
                     <InputField
                       icon={Mail}
@@ -894,6 +923,35 @@ export default function LoginPage() {
         </motion.div>
 
       </div>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            style={{
+              position: 'fixed',
+              bottom: '2rem',
+              right: '2rem',
+              padding: '1rem 1.5rem',
+              borderRadius: '0.5rem',
+              backgroundColor: toastMessage.type === 'success' ? '#10b981' : '#ef4444',
+              color: 'white',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              zIndex: 50,
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            {toastMessage.type === 'success' ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
+            {toastMessage.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

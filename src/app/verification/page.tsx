@@ -8,23 +8,23 @@ import RoleGuard from '@/components/auth/RoleGuard';
 
 export default function VerificationPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { isAuthenticated, role } = useAuthStore();
 
   useEffect(() => {
-    if (!user) {
+    if (!isAuthenticated) {
       router.replace('/login');
-    } else if (user.role === 'contributor') {
+    } else if (role === 'contributor') {
       router.replace('/contributor');
     }
-  }, [user, router]);
+  }, [isAuthenticated, role, router]);
 
   // Show nothing while redirecting
-  if (!user || user.role !== 'admin') {
+  if (!isAuthenticated || role !== 'admin') {
     return null;
   }
 
   return (
-    <RoleGuard allowedRoles={['moderator']}>
+    <RoleGuard allowedRoles={['admin']}>
       <VerifierDashboard />
     </RoleGuard>
   );
