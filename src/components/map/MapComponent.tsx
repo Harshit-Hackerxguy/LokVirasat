@@ -133,7 +133,15 @@ function MarkerClusterGroup({
     // DOCUMENTED HERITAGE SITES
     // ------------------------------------------------
 
-    heritageSites.forEach((site) => {
+    // De-duplicate by ID to prevent two markers for the same site
+    const seenSiteIds = new Set<string>();
+    const uniqueSites = heritageSites.filter((site) => {
+      if (seenSiteIds.has(site.id)) return false;
+      seenSiteIds.add(site.id);
+      return true;
+    });
+
+    uniqueSites.forEach((site) => {
       const [lng, lat] = site.coordinates;
 
       const marker = L.marker([lat, lng], {
@@ -151,8 +159,24 @@ function MarkerClusterGroup({
           ?.replace(/-/g, ' ') ||
         'Reported';
 
+      const firstImage =
+        site.images && site.images.length > 0
+          ? site.images[0]
+          : null;
+
+      const imageHtml = firstImage
+        ? `<div class="popup-image">
+             <img
+               src="${firstImage}"
+               alt="${site.name}"
+               loading="lazy"
+             />
+           </div>`
+        : '';
+
       popupContent.innerHTML = `
         <div class="popup-inner">
+          ${imageHtml}
           <div class="popup-body">
 
             <div class="popup-header">
