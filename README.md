@@ -10,6 +10,9 @@
   <img src="https://img.shields.io/badge/TypeScript-5.0-007ACC?style=for-the-badge&logo=typescript" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Zustand-State_Management-orange?style=for-the-badge" alt="Zustand" />
   <img src="https://img.shields.io/badge/Leaflet-Map-199900?style=for-the-badge&logo=leaflet" alt="Leaflet" />
+  <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
 </p>
 
 ---
@@ -44,6 +47,7 @@ The application utilizes an interactive map to geographically anchor heritage si
 - 🔒 **Secure Authentication**: Robust user authentication and profile management utilizing Zustand for state management.
 - 📡 **Offline Capabilities**: Partial offline functionality ensures that field researchers can access and record data even in remote areas.
 - ✅ **Curator Verification System**: Built-in workflows for curators to verify the authenticity and accuracy of user-submitted heritage data.
+- 🗄️ **Robust Spatial Backend**: Powered by FastAPI and PostgreSQL + PostGIS, enabling high-performance geographic querying and spatial data management.
 
 ---
 
@@ -51,10 +55,16 @@ The application utilizes an interactive map to geographically anchor heritage si
 
 Our stack is built on top of modern, high-performance web technologies:
 
-### Core
+### Frontend Core
 - **Framework**: [Next.js (App Router)](https://nextjs.org/)
 - **UI Library**: [React 19](https://react.dev/)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
+
+### Backend & Database
+- **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
+- **Language**: [Python](https://www.python.org/)
+- **Database**: [PostgreSQL](https://www.postgresql.org/) with [PostGIS](https://postgis.net/) for spatial data
+- **ORM**: [SQLAlchemy](https://www.sqlalchemy.org/) & [GeoAlchemy2](https://geoalchemy-2.readthedocs.io/)
 
 ### Styling & UI
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
@@ -89,35 +99,50 @@ Make sure you have Node.js installed (v20+ is recommended).
    cd LokVirasat
    ```
 
-2. **Install dependencies:**
+2. **Database Setup (PostgreSQL + PostGIS):**
+   Ensure PostgreSQL is installed and running on your system.
    ```bash
+   # Create database and enable PostGIS extension (Linux example)
+   sudo -u postgres psql -c "CREATE DATABASE lokvirasat;"
+   sudo -u postgres psql -d lokvirasat -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+   ```
+
+3. **Backend Setup (FastAPI):**
+   *(Assuming the backend folder is located in your workspace alongside the frontend)*
+   ```bash
+   cd ../backend
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   
+   # Seed the database with heritage sites
+   python -m backend.seed
+   
+   # Start the API server
+   uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+   *The API will be available at [http://localhost:8000](http://localhost:8000). Swagger UI is at `/docs`.*
+
+4. **Frontend Setup (Next.js):**
+   Open a new terminal and navigate to the frontend directory:
+   ```bash
+   cd LokVirasat
    npm install
-   # or
-   yarn install
-   # or 
-   pnpm install
-   ```
-
-3. **Start the development server:**
-   ```bash
+   
+   # Start the development server
    npm run dev
-   # or
-   yarn dev
-   # or 
-   pnpm dev
    ```
-
-4. **Explore the App:**
-   Open your browser and navigate to [http://localhost:3000](http://localhost:3000).
+   *The application will be available at [http://localhost:3000](http://localhost:3000).*
 
 ---
 
 ## 📂 Project Structure
 
 ```text
-src/
-├── app/                  # Next.js App Router (pages, layouts, globals.css)
-├── components/           # Reusable modular UI components
+LokVirasat/               # Frontend Application
+├── src/
+│   ├── app/              # Next.js App Router (pages, layouts, globals.css)
+│   ├── components/       # Reusable modular UI components
 │   ├── audio/            # Audio recording & playback features
 │   ├── auth/             # Login, registration, and auth wrappers
 │   ├── forms/            # Form components using React Hook Form
@@ -130,6 +155,15 @@ src/
 ├── types/                # TypeScript interfaces and type definitions
 ├── utils/                # Helper functions, formatters, and API handlers
 └── data/                 # Static JSON or mock data for the application
+
+backend/                  # FastAPI Application (Parallel Directory)
+├── main.py               # API entry point & routes setup
+├── database.py           # Database connection & session setup
+├── models.py             # SQLAlchemy models (heritage_sites, heritage_leads)
+├── schemas.py            # Pydantic validation schemas
+├── crud.py               # Database CRUD operations
+├── routers/              # API Route handlers (/api/sites, /api/leads)
+└── seed.py               # Script to seed initial database records
 ```
 
 ---
