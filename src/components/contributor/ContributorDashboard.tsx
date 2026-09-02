@@ -171,6 +171,19 @@ export default function ContributorDashboard({
   };
 
   // =========================================================
+  // CONTINUE DOCUMENTATION
+  // =========================================================
+
+  const handleContinueDocumentation = (
+    lead: HeritageLead
+  ) => {
+    // IMPORTANT:
+    // Do NOT change the status here.
+    // The lead is already claimed.
+    setSelectedLead(lead);
+  };
+
+  // =========================================================
   // SUBMIT DOCUMENTATION
   // =========================================================
 
@@ -204,6 +217,9 @@ export default function ContributorDashboard({
   const handleViewProgress = (
     lead: HeritageLead
   ) => {
+    // IMPORTANT:
+    // This ONLY opens the progress modal.
+    // It does NOT modify the lead.
     setProgressLead(lead);
   };
 
@@ -223,12 +239,15 @@ export default function ContributorDashboard({
     setProgressLead(null);
   };
 
-    return (
+  return (
     <div className="contributor-page">
 
       <div className="contributor-container">
 
-        {/* HEADER */}
+        {/* =====================================================
+            HEADER
+        ===================================================== */}
+
         <section className="contributor-hero">
 
           <div className="contributor-hero-content">
@@ -250,23 +269,35 @@ export default function ContributorDashboard({
           </div>
 
           <div className="contributor-hero-badge">
+
             <MapPin className="h-5 w-5" />
 
             <div>
-              <span>Contributor Access</span>
-              <strong>Heritage Documentation</strong>
+
+              <span>
+                Contributor Access
+              </span>
+
+              <strong>
+                Heritage Documentation
+              </strong>
+
             </div>
+
           </div>
 
         </section>
 
+        {/* =====================================================
+            STATS
+        ===================================================== */}
 
-        {/* STATS */}
         <section className="contributor-stats">
 
           <div className="contributor-stat-card">
 
             <div className="contributor-stat-content">
+
               <span className="contributor-stat-label">
                 Total Leads
               </span>
@@ -278,6 +309,7 @@ export default function ContributorDashboard({
               <span className="contributor-stat-description">
                 Community-reported heritage
               </span>
+
             </div>
 
             <div className="contributor-stat-icon blue">
@@ -286,10 +318,10 @@ export default function ContributorDashboard({
 
           </div>
 
-
           <div className="contributor-stat-card">
 
             <div className="contributor-stat-content">
+
               <span className="contributor-stat-label">
                 Available
               </span>
@@ -301,6 +333,7 @@ export default function ContributorDashboard({
               <span className="contributor-stat-description">
                 Ready to document
               </span>
+
             </div>
 
             <div className="contributor-stat-icon blue">
@@ -309,10 +342,10 @@ export default function ContributorDashboard({
 
           </div>
 
-
           <div className="contributor-stat-card">
 
             <div className="contributor-stat-content">
+
               <span className="contributor-stat-label">
                 Claimed
               </span>
@@ -324,6 +357,7 @@ export default function ContributorDashboard({
               <span className="contributor-stat-description">
                 Currently being documented
               </span>
+
             </div>
 
             <div className="contributor-stat-icon blue">
@@ -332,10 +366,10 @@ export default function ContributorDashboard({
 
           </div>
 
-
           <div className="contributor-stat-card">
 
             <div className="contributor-stat-content">
+
               <span className="contributor-stat-label">
                 Completed
               </span>
@@ -347,6 +381,7 @@ export default function ContributorDashboard({
               <span className="contributor-stat-description">
                 Documentation submitted
               </span>
+
             </div>
 
             <div className="contributor-stat-icon green">
@@ -357,8 +392,10 @@ export default function ContributorDashboard({
 
         </section>
 
+        {/* =====================================================
+            FILTERS
+        ===================================================== */}
 
-        {/* FILTERS */}
         <section className="contributor-controls">
 
           <div className="contributor-filter-group">
@@ -407,17 +444,23 @@ export default function ContributorDashboard({
 
         </section>
 
+        {/* =====================================================
+            LEADS HEADER
+        ===================================================== */}
 
-        {/* LEADS HEADER */}
         <section className="contributor-leads-header">
 
           <div>
-            <h2>Heritage Leads</h2>
+
+            <h2>
+              Heritage Leads
+            </h2>
 
             <p>
               Community-reported locations awaiting
               documentation or verification.
             </p>
+
           </div>
 
           <span className="contributor-result-count">
@@ -426,19 +469,28 @@ export default function ContributorDashboard({
 
         </section>
 
+        {/* =====================================================
+            LEADS
+        ===================================================== */}
 
-        {/* LEADS */}
         {filteredLeads.length > 0 ? (
 
           <div className="contributor-leads-grid">
 
             {filteredLeads.map((lead) => (
+
               <HeritageLeadCard
                 key={lead.id}
                 lead={lead}
                 onClaim={handleClaim}
-                onViewProgress={handleViewProgress}
+                onContinueDocumentation={
+                  handleContinueDocumentation
+                }
+                onViewProgress={
+                  handleViewProgress
+                }
               />
+
             ))}
 
           </div>
@@ -465,23 +517,31 @@ export default function ContributorDashboard({
 
       </div>
 
+      {/* =====================================================
+          DOCUMENTATION MODAL
+      ===================================================== */}
 
-      {/* DOCUMENTATION MODAL */}
       {selectedLead && (
+
         <HeritageLeadModal
           lead={selectedLead}
           onClose={handleCloseDocumentation}
           onSubmit={handleDocumentationSubmit}
         />
+
       )}
 
+      {/* =====================================================
+          CONTRIBUTION PROGRESS MODAL
+      ===================================================== */}
 
-      {/* CONTRIBUTION PROGRESS MODAL */}
       {progressLead && (
+
         <ContributionStatus
           lead={progressLead}
           onClose={handleCloseProgress}
         />
+
       )}
 
     </div>

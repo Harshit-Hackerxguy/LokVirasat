@@ -10,12 +10,14 @@ import {
   ShieldCheck,
   X,
   XCircle,
+  Mic,
 } from 'lucide-react';
 
-import { HeritageLead } from '@/types';
+import { ConditionReport, HeritageLead } from '@/types';
 import { HERITAGE_LEADS } from '@/data/heritageLeads';
 
 const STORAGE_KEY = 'lokvirasat-heritage-leads';
+const CONDITION_REPORTS_KEY = 'lokvirasat-condition-reports';
 
 type Filter =
   | 'all'
@@ -54,30 +56,47 @@ function StatusBadge({
   const current = config[status];
 
   return (
-    <span className={`status-badge ${current.className}`}>
+    <span
+      className={`status-badge ${current.className}`}
+    >
       {current.label}
     </span>
   );
 }
 
 export default function VerifierDashboard() {
-  const [leads, setLeads] = useState<HeritageLead[]>([]);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [leads, setLeads] =
+    useState<HeritageLead[]>([]);
+
+  const [filter, setFilter] =
+    useState<Filter>('all');
+
   const [selectedLead, setSelectedLead] =
     useState<HeritageLead | null>(null);
 
-  const [rejecting, setRejecting] = useState(false);
+  const [rejecting, setRejecting] =
+    useState(false);
+
   const [rejectionReason, setRejectionReason] =
     useState('');
 
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] =
+    useState(false);
+
+  const [conditionReports, setConditionReports] =
+    useState<ConditionReport[]>([]);
+
+  const [selectedReport, setSelectedReport] =
+    useState<ConditionReport | null>(null);
 
   /* LOAD SHARED CONTRIBUTOR DATA */
 
   useEffect(() => {
     try {
       const saved =
-        window.localStorage.getItem(STORAGE_KEY);
+        window.localStorage.getItem(
+          STORAGE_KEY
+        );
 
       if (saved) {
         const parsed =
@@ -100,6 +119,31 @@ export default function VerifierDashboard() {
       setLeads(HERITAGE_LEADS);
     } finally {
       setLoaded(true);
+    }
+  }, []);
+
+  /* LOAD CONDITION REPORTS */
+
+  useEffect(() => {
+    try {
+      const saved =
+        window.localStorage.getItem(
+          CONDITION_REPORTS_KEY
+        );
+
+      if (saved) {
+        const parsed =
+          JSON.parse(saved) as ConditionReport[];
+
+        if (Array.isArray(parsed)) {
+          setConditionReports(parsed);
+        }
+      }
+    } catch (error) {
+      console.error(
+        'Failed to load condition reports:',
+        error
+      );
     }
   }, []);
 
@@ -149,7 +193,9 @@ export default function VerifierDashboard() {
 
   /* APPROVE */
 
-  const approveLead = (lead: HeritageLead) => {
+  const approveLead = (
+    lead: HeritageLead
+  ) => {
     const updated: HeritageLead = {
       ...lead,
       status: 'verified',
@@ -157,7 +203,9 @@ export default function VerifierDashboard() {
 
     setLeads((current) =>
       current.map((item) =>
-        item.id === lead.id ? updated : item
+        item.id === lead.id
+          ? updated
+          : item
       )
     );
 
@@ -168,7 +216,9 @@ export default function VerifierDashboard() {
 
   /* REJECT */
 
-  const rejectLead = (lead: HeritageLead) => {
+  const rejectLead = (
+    lead: HeritageLead
+  ) => {
     const updated: HeritageLead = {
       ...lead,
       status: 'claimed',
@@ -176,7 +226,9 @@ export default function VerifierDashboard() {
 
     setLeads((current) =>
       current.map((item) =>
-        item.id === lead.id ? updated : item
+        item.id === lead.id
+          ? updated
+          : item
       )
     );
 
@@ -187,10 +239,40 @@ export default function VerifierDashboard() {
 
   /* OPEN REVIEW */
 
-  const openReview = (lead: HeritageLead) => {
+  const openReview = (
+    lead: HeritageLead
+  ) => {
     setSelectedLead(lead);
     setRejecting(false);
     setRejectionReason('');
+  };
+
+  /* CLOSE / RESOLVE CONDITION REPORT */
+
+  const closeConditionReport = (
+    reportId: string
+  ) => {
+    setConditionReports((current) => {
+      const updated = current.filter(
+        (report) => report.id !== reportId
+      );
+
+      try {
+        window.localStorage.setItem(
+          CONDITION_REPORTS_KEY,
+          JSON.stringify(updated)
+        );
+      } catch (error) {
+        console.error(
+          'Failed to save condition report changes:',
+          error
+        );
+      }
+
+      return updated;
+    });
+
+    setSelectedReport(null);
   };
 
   return (
@@ -199,11 +281,13 @@ export default function VerifierDashboard() {
       {/* HEADER */}
 
       <section className="verification-header">
+
         <div className="verification-header-inner">
 
           <div className="verification-header-row">
 
             <div>
+
               <p className="portal-label">
                 Moderator Portal
               </p>
@@ -217,12 +301,15 @@ export default function VerifierDashboard() {
                 submissions before they become trusted
                 LokVirasat records.
               </p>
+
             </div>
 
             <div className="moderator-access">
+
               <ShieldCheck className="h-5 w-5" />
 
               <div>
+
                 <p className="moderator-access-label">
                   Moderator Access
                 </p>
@@ -230,12 +317,15 @@ export default function VerifierDashboard() {
                 <p className="moderator-access-title">
                   Verification Dashboard
                 </p>
+
               </div>
+
             </div>
 
           </div>
 
         </div>
+
       </section>
 
       {/* CONTENT */}
@@ -253,6 +343,7 @@ export default function VerifierDashboard() {
             </div>
 
             <div>
+
               <p className="stat-label">
                 Pending Review
               </p>
@@ -260,6 +351,7 @@ export default function VerifierDashboard() {
               <p className="stat-value">
                 {pendingCount}
               </p>
+
             </div>
 
           </div>
@@ -271,6 +363,7 @@ export default function VerifierDashboard() {
             </div>
 
             <div>
+
               <p className="stat-label">
                 Claimed
               </p>
@@ -278,6 +371,7 @@ export default function VerifierDashboard() {
               <p className="stat-value">
                 {claimedCount}
               </p>
+
             </div>
 
           </div>
@@ -289,6 +383,7 @@ export default function VerifierDashboard() {
             </div>
 
             <div>
+
               <p className="stat-label">
                 Verified
               </p>
@@ -296,6 +391,7 @@ export default function VerifierDashboard() {
               <p className="stat-value">
                 {verifiedCount}
               </p>
+
             </div>
 
           </div>
@@ -309,25 +405,143 @@ export default function VerifierDashboard() {
           {(
             [
               ['all', 'All'],
-              ['documented', 'Pending Verification'],
+              [
+                'documented',
+                'Pending Verification',
+              ],
               ['verified', 'Verified'],
               ['claimed', 'Claimed'],
-              ['needs-documentation', 'Needs Documentation'],
+              [
+                'needs-documentation',
+                'Needs Documentation',
+              ],
             ] as [Filter, string][]
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setFilter(value)}
-              className={`verification-filter ${
-                filter === value ? 'active' : ''
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+          ).map(
+            ([value, label]) => (
+
+              <button
+                key={value}
+                type="button"
+                onClick={() =>
+                  setFilter(value)
+                }
+                className={`verification-filter ${
+                  filter === value
+                    ? 'active'
+                    : ''
+                }`}
+              >
+                {label}
+              </button>
+
+            )
+          )}
 
         </div>
+
+        {/* CONDITION REPORTS */}
+
+        {conditionReports.length > 0 && (
+
+          <section className="verification-submissions">
+
+            <div className="mb-5">
+              <div className="flex items-center gap-3">
+                <div className="stat-icon pending">
+                  <MapPin className="h-5 w-5" />
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-semibold text-white">
+                    Condition Reports
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-400">
+                    Review location-verified reports submitted
+                    for documented heritage sites.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {conditionReports.map((report) => {
+
+              const relatedLead =
+                leads.find(
+                  (lead) => lead.id === report.siteId
+                );
+
+              return (
+                <article
+                  key={report.id}
+                  className="submission-card"
+                >
+
+                  <div className="submission-layout">
+
+                    <div className="submission-main">
+
+                      <div className="submission-heading">
+
+                        <h2 className="submission-name">
+                          {relatedLead?.name ||
+                            report.siteId}
+                        </h2>
+
+                        <span className="status-badge status-pending">
+                          Condition Report
+                        </span>
+
+                      </div>
+
+                      <p className="submission-category">
+                        {report.issueType}
+                      </p>
+
+                      <p className="submission-description">
+                        {report.description ||
+                          'No additional description provided.'}
+                      </p>
+
+                      <div className="submission-meta">
+
+                        <span className="submission-meta-item">
+                          <MapPin />
+                          GPS Verified
+                        </span>
+
+                        <span className="submission-meta-item">
+                          Report ID{' '}
+                          <strong>{report.id}</strong>
+                        </span>
+
+                      </div>
+
+                    </div>
+
+                    <div className="submission-action">
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedReport(report)
+                        }
+                        className="review-button"
+                      >
+                        Review Report
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                </article>
+              );
+            })}
+
+          </section>
+
+        )}
 
         {/* SUBMISSIONS */}
 
@@ -336,9 +550,11 @@ export default function VerifierDashboard() {
           {!loaded ? (
 
             <div className="verification-empty">
+
               <p>
                 Loading verification submissions...
               </p>
+
             </div>
 
           ) : filteredLeads.length === 0 ? (
@@ -362,102 +578,125 @@ export default function VerifierDashboard() {
 
           ) : (
 
-            filteredLeads.map((lead) => (
+            filteredLeads.map(
+              (lead) => (
 
-              <article
-                key={lead.id}
-                className="submission-card"
-              >
+                <article
+                  key={lead.id}
+                  className="submission-card"
+                >
 
-                <div className="submission-layout">
+                  <div className="submission-layout">
 
-                  <div className="submission-main">
+                    <div className="submission-main">
 
-                    <div className="submission-heading">
+                      <div className="submission-heading">
 
-                      <h2 className="submission-name">
-                        {lead.name}
-                      </h2>
+                        <h2 className="submission-name">
+                          {lead.name}
+                        </h2>
 
-                      <StatusBadge
-                        status={lead.status}
-                      />
+                        <StatusBadge
+                          status={lead.status}
+                        />
+
+                      </div>
+
+                      <p className="submission-category">
+                        {lead.category}
+                      </p>
+
+                      <p className="submission-description">
+                        {lead.description}
+                      </p>
+
+                      <div className="submission-meta">
+
+                        <span className="submission-meta-item">
+
+                          <MapPin />
+
+                          {lead.villageOrArea}
+
+                        </span>
+
+                        <span className="submission-meta-item">
+
+                          Submitted by{' '}
+
+                          <strong>
+                            {lead.submittedBy}
+                          </strong>
+
+                        </span>
+
+                        {lead.assignedContributor && (
+
+                          <span className="submission-meta-item">
+
+                            Contributor:{' '}
+
+                            <strong>
+                              {lead.assignedContributor}
+                            </strong>
+
+                          </span>
+
+                        )}
+
+                        <span className="submission-meta-item">
+
+                          Submitted{' '}
+                          {lead.submittedAt}
+
+                        </span>
+
+                      </div>
 
                     </div>
 
-                    <p className="submission-category">
-                      {lead.category}
-                    </p>
+                    <div className="submission-action">
 
-                    <p className="submission-description">
-                      {lead.description}
-                    </p>
+                      {lead.status ===
+                      'documented' ? (
 
-                    <div className="submission-meta">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openReview(lead)
+                          }
+                          className="review-button"
+                        >
+                          Review Submission
+                        </button>
 
-                      <span className="submission-meta-item">
-                        <MapPin />
-                        {lead.villageOrArea}
-                      </span>
+                      ) : lead.status ===
+                        'verified' ? (
 
-                      <span className="submission-meta-item">
-                        Submitted by{' '}
-                        <strong>
-                          {lead.submittedBy}
-                        </strong>
-                      </span>
+                        <div className="verified-state">
 
-                      {lead.assignedContributor && (
-                        <span className="submission-meta-item">
-                          Contributor:{' '}
-                          <strong>
-                            {lead.assignedContributor}
-                          </strong>
-                        </span>
+                          <CheckCircle2 className="h-4 w-4" />
+
+                          Verified
+
+                        </div>
+
+                      ) : (
+
+                        <div className="not-ready">
+                          Not ready for review
+                        </div>
+
                       )}
 
-                      <span className="submission-meta-item">
-                        Submitted {lead.submittedAt}
-                      </span>
-
                     </div>
 
                   </div>
 
-                  <div className="submission-action">
+                </article>
 
-                    {lead.status === 'documented' ? (
-
-                      <button
-                        type="button"
-                        onClick={() => openReview(lead)}
-                        className="review-button"
-                      >
-                        Review Submission
-                      </button>
-
-                    ) : lead.status === 'verified' ? (
-
-                      <div className="verified-state">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Verified
-                      </div>
-
-                    ) : (
-
-                      <div className="not-ready">
-                        Not ready for review
-                      </div>
-
-                    )}
-
-                  </div>
-
-                </div>
-
-              </article>
-
-            ))
+              )
+            )
 
           )}
 
@@ -465,12 +704,206 @@ export default function VerifierDashboard() {
 
       </div>
 
-      {/* REVIEW MODAL */}
+      {/* =====================================================
+          CONDITION REPORT REVIEW MODAL
+      ===================================================== */}
 
-      {selectedLead && (
+      {selectedReport && (
+
         <div className="verification-modal-overlay">
 
           <div className="verification-modal">
+
+            <div className="verification-modal-header">
+
+              <div className="verification-modal-title-wrap">
+
+                <p className="verification-modal-label">
+                  Condition Report Review
+                </p>
+
+                <h2 className="verification-modal-title">
+                  {selectedReport.issueType}
+                </h2>
+
+                <p className="verification-modal-description">
+                  Review the reported condition and evidence
+                  before acknowledging or dismissing it.
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedReport(null)}
+                className="verification-modal-close"
+                aria-label="Close condition report"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+            </div>
+
+            <div className="verification-modal-body">
+
+              <section className="verification-modal-section">
+
+                <h3 className="verification-section-title">
+                  Report Details
+                </h3>
+
+                <div className="verification-info-card">
+
+                  <div>
+                    <p className="verification-info-label">
+                      Issue Type
+                    </p>
+
+                    <p className="verification-info-value">
+                      {selectedReport.issueType}
+                    </p>
+                  </div>
+
+                  <div className="verification-description-block">
+
+                    <p className="verification-info-label">
+                      Description
+                    </p>
+
+                    <p className="verification-info-description">
+                      {selectedReport.description ||
+                        'No additional description provided.'}
+                    </p>
+
+                  </div>
+
+                  <div className="verification-description-block">
+
+                    <p className="verification-info-label">
+                      Heritage Site ID
+                    </p>
+
+                    <p className="verification-info-description">
+                      {selectedReport.siteId}
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </section>
+
+              <section className="verification-modal-section">
+
+                <h3 className="verification-section-title">
+                  Location Verification
+                </h3>
+
+                <div className="verification-info-card">
+
+                  <div className="verification-location">
+
+                    <div className="verification-location-icon">
+                      <MapPin className="h-5 w-5" />
+                    </div>
+
+                    <div>
+
+                      <p className="verification-info-value">
+                        Location verified
+                      </p>
+
+                      <p className="verification-info-description">
+                        Coordinates:{' '}
+                        {selectedReport.exifCoords[1].toFixed(5)}
+                        ,{' '}
+                        {selectedReport.exifCoords[0].toFixed(5)}
+                      </p>
+
+                      <p className="text-sm text-emerald-400 mt-2">
+                        ✓ Report passed the location verification
+                        check
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </section>
+
+              {selectedReport.photoUrl && (
+
+                <section className="verification-modal-section">
+
+                  <h3 className="verification-section-title">
+                    Evidence Photo
+                  </h3>
+
+                  <div className="verification-info-card">
+
+                    <div className="overflow-hidden rounded-xl border border-blue-500/20 bg-black/20">
+
+                      <img
+                        src={selectedReport.photoUrl}
+                        alt={`Evidence for ${selectedReport.issueType}`}
+                        className="max-h-[420px] w-full object-contain"
+                      />
+
+                    </div>
+
+                  </div>
+
+                </section>
+
+              )}
+
+            </div>
+
+            <div className="verification-modal-footer">
+
+              <button
+                type="button"
+                onClick={() =>
+                  closeConditionReport(selectedReport.id)
+                }
+                className="verification-footer-button verification-footer-reject"
+              >
+                <XCircle className="h-4 w-4" />
+                Dismiss Report
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  closeConditionReport(selectedReport.id)
+                }
+                className="verification-footer-button verification-footer-approve"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Acknowledge & Resolve
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* =====================================================
+          REVIEW MODAL
+      ===================================================== */}
+
+      {selectedLead && (
+
+        <div className="verification-modal-overlay">
+
+          <div className="verification-modal">
+
+            {/* HEADER */}
 
             <div className="verification-modal-header">
 
@@ -506,7 +939,11 @@ export default function VerifierDashboard() {
 
             </div>
 
+            {/* BODY */}
+
             <div className="verification-modal-body">
+
+              {/* HERITAGE INFORMATION */}
 
               <section className="verification-modal-section">
 
@@ -517,6 +954,7 @@ export default function VerifierDashboard() {
                 <div className="verification-info-card">
 
                   <div>
+
                     <p className="verification-info-label">
                       Category
                     </p>
@@ -524,9 +962,11 @@ export default function VerifierDashboard() {
                     <p className="verification-info-value">
                       {selectedLead.category}
                     </p>
+
                   </div>
 
                   <div className="verification-description-block">
+
                     <p className="verification-info-label">
                       Description
                     </p>
@@ -534,11 +974,30 @@ export default function VerifierDashboard() {
                     <p className="verification-info-description">
                       {selectedLead.description}
                     </p>
+
                   </div>
+
+                  {selectedLead.historicalInformation && (
+
+                    <div className="verification-description-block">
+
+                      <p className="verification-info-label">
+                        Historical / Cultural Information
+                      </p>
+
+                      <p className="verification-info-description">
+                        {selectedLead.historicalInformation}
+                      </p>
+
+                    </div>
+
+                  )}
 
                 </div>
 
               </section>
+
+              {/* LOCATION */}
 
               <section className="verification-modal-section">
 
@@ -551,7 +1010,9 @@ export default function VerifierDashboard() {
                   <div className="verification-location">
 
                     <div className="verification-location-icon">
+
                       <MapPin className="h-5 w-5" />
+
                     </div>
 
                     <div>
@@ -561,11 +1022,40 @@ export default function VerifierDashboard() {
                       </p>
 
                       <p className="verification-info-description">
+
                         Coordinates:{' '}
+
                         {selectedLead.approximateLocation[1].toFixed(5)}
                         ,{' '}
+
                         {selectedLead.approximateLocation[0].toFixed(5)}
+
                       </p>
+
+                      {selectedLead.verifiedCoordinates && (
+
+                        <p className="verification-info-description">
+
+                          GPS Verified Coordinates:{' '}
+
+                          {selectedLead.verifiedCoordinates[1].toFixed(5)}
+                          ,{' '}
+
+                          {selectedLead.verifiedCoordinates[0].toFixed(5)}
+
+                        </p>
+
+                      )}
+
+                      {selectedLead.locationVerified && (
+
+                        <p className="text-sm text-emerald-400 mt-2">
+
+                          ✓ Contributor location verified
+
+                        </p>
+
+                      )}
 
                     </div>
 
@@ -574,6 +1064,8 @@ export default function VerifierDashboard() {
                 </div>
 
               </section>
+
+              {/* CONTRIBUTION DETAILS */}
 
               <section className="verification-modal-section">
 
@@ -602,8 +1094,10 @@ export default function VerifierDashboard() {
                     </p>
 
                     <p className="verification-info-value">
+
                       {selectedLead.assignedContributor ||
                         'Not specified'}
+
                     </p>
 
                   </div>
@@ -623,6 +1117,132 @@ export default function VerifierDashboard() {
                 </div>
 
               </section>
+
+              {/* =================================================
+                  PHOTOS / EVIDENCE
+              ================================================= */}
+
+              {selectedLead.photos &&
+                selectedLead.photos.length > 0 && (
+
+                  <section className="verification-modal-section">
+
+                    <h3 className="verification-section-title">
+                      Evidence & Photos
+                    </h3>
+
+                    <div className="verification-info-card">
+
+                      <div className="space-y-3">
+
+                        {selectedLead.photos.map(
+                          (photo, index) => (
+
+                            <div
+                              key={`${photo}-${index}`}
+                              className="flex items-center gap-3 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3"
+                            >
+
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+
+                                <FileCheck2 className="h-4 w-4 text-blue-400" />
+
+                              </div>
+
+                              <span className="text-sm text-slate-300 truncate">
+
+                                {photo}
+
+                              </span>
+
+                            </div>
+
+                          )
+                        )}
+
+                      </div>
+
+                    </div>
+
+                  </section>
+
+                )}
+
+              {/* =================================================
+                  LOCAL STORIES
+              ================================================= */}
+
+              {selectedLead.oralStories &&
+                selectedLead.oralStories.length > 0 && (
+
+                  <section className="verification-modal-section">
+
+                    <h3 className="verification-section-title">
+
+                      Local Stories
+
+                    </h3>
+
+                    <div className="verification-info-card">
+
+                      <div className="space-y-4">
+
+                        {selectedLead.oralStories.map(
+                          (story, index) => (
+
+                            <div
+                              key={`${story.audioUrl}-${index}`}
+                              className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4"
+                            >
+
+                              <div className="flex items-center gap-3">
+
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400">
+
+                                  <Mic className="h-5 w-5" />
+
+                                </div>
+
+                                <div>
+
+                                  <p className="font-semibold text-white">
+
+                                    Local Oral History{' '}
+                                    {index + 1}
+
+                                  </p>
+
+                                  <p className="text-sm text-slate-400">
+
+                                    Language:{' '}
+                                    {story.language}
+
+                                  </p>
+
+                                </div>
+
+                              </div>
+
+                              <audio
+                                controls
+                                src={story.audioUrl}
+                                className="mt-4 w-full"
+                              />
+
+                            </div>
+
+                          )
+                        )}
+
+                      </div>
+
+                    </div>
+
+                  </section>
+
+                )}
+
+              {/* CURRENT STATE */}
 
               <section className="verification-modal-section">
 
@@ -648,7 +1268,10 @@ export default function VerifierDashboard() {
 
               </section>
 
+              {/* REJECTION */}
+
               {rejecting && (
+
                 <section className="verification-rejection">
 
                   <label htmlFor="rejection-reason">
@@ -668,18 +1291,24 @@ export default function VerifierDashboard() {
                   />
 
                 </section>
+
               )}
 
             </div>
+
+            {/* FOOTER */}
 
             <div className="verification-modal-footer">
 
               {!rejecting ? (
 
                 <>
+
                   <button
                     type="button"
-                    onClick={() => setRejecting(true)}
+                    onClick={() =>
+                      setRejecting(true)
+                    }
                     className="verification-footer-button verification-footer-reject"
                   >
                     <XCircle className="h-4 w-4" />
@@ -696,11 +1325,13 @@ export default function VerifierDashboard() {
                     <ShieldCheck className="h-4 w-4" />
                     Approve & Verify
                   </button>
+
                 </>
 
               ) : (
 
                 <>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -722,6 +1353,7 @@ export default function VerifierDashboard() {
                     <XCircle className="h-4 w-4" />
                     Reject Submission
                   </button>
+
                 </>
 
               )}
@@ -731,6 +1363,7 @@ export default function VerifierDashboard() {
           </div>
 
         </div>
+
       )}
 
     </main>

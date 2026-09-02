@@ -19,14 +19,32 @@ export interface HeritageSite {
   coordinates: Coordinates;
   description: string;
   category: HeritageCategory;
+
   zoomLevel: number;
   pitch: number;
   bearing: number;
 
-  // LokVirasat
   verificationStatus?: VerificationStatus;
   lastUpdated?: string;
+
   images?: string[];
+
+  // Community documentation
+  historicalInformation?: string;
+
+  // Location verification
+  locationVerified?: boolean;
+  verifiedCoordinates?: Coordinates;
+
+  // Recorded oral histories / local stories
+  oralStories?: {
+    audioUrl: string;
+    language: string;
+  }[];
+
+  // Documentation metadata
+  documentedAt?: string;
+  documentedBy?: string;
 }
 
 export interface HeritageLead {
@@ -36,7 +54,6 @@ export interface HeritageLead {
   villageOrArea: string;
   category: HeritageCategory;
   description: string;
-
   submittedBy: string;
   submittedAt: string;
 
@@ -47,6 +64,23 @@ export interface HeritageLead {
     | 'verified';
 
   assignedContributor?: string;
+
+  historicalInformation?: string;
+
+  locationVerified?: boolean;
+
+  verifiedCoordinates?: Coordinates;
+
+  photos?: string[];
+
+  oralStories?: {
+    audioUrl: string;
+    language: string;
+  }[];
+
+  documentedAt?: string;
+
+  documentedBy?: string;
 }
 
 export enum IssueType {

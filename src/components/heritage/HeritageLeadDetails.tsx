@@ -23,32 +23,37 @@ const STATUS_CONFIG: Record<
 > = {
   'needs-documentation': {
     label: 'Needs Documentation',
-    color: 'bg-yellow-100 text-yellow-800',
-    dot: 'bg-yellow-500',
+    color: 'bg-amber-50 text-amber-700 border border-amber-200',
+    dot: 'bg-amber-500',
   },
   claimed: {
     label: 'Claimed',
-    color: 'bg-blue-100 text-blue-800',
+    color: 'bg-blue-50 text-blue-700 border border-blue-200',
     dot: 'bg-blue-500',
   },
   documented: {
     label: 'Documented',
-    color: 'bg-purple-100 text-purple-800',
+    color: 'bg-purple-50 text-purple-700 border border-purple-200',
     dot: 'bg-purple-500',
   },
   verified: {
     label: 'Verified',
-    color: 'bg-green-100 text-green-800',
-    dot: 'bg-green-500',
+    color: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    dot: 'bg-emerald-500',
   },
 };
 
 const CATEGORY_COLOR: Record<string, string> = {
-  Monument: 'bg-orange-100 text-orange-700',
-  'Sacred Grove': 'bg-green-100 text-green-700',
-  'Folklore Site': 'bg-purple-100 text-purple-700',
-  'Ancient Ruins': 'bg-yellow-100 text-yellow-700',
-  'Traditional Craft Hub': 'bg-pink-100 text-pink-700',
+  Monument:
+    'bg-orange-50 text-orange-700 border border-orange-200',
+  'Sacred Grove':
+    'bg-green-50 text-green-700 border border-green-200',
+  'Folklore Site':
+    'bg-purple-50 text-purple-700 border border-purple-200',
+  'Ancient Ruins':
+    'bg-amber-50 text-amber-700 border border-amber-200',
+  'Traditional Craft Hub':
+    'bg-pink-50 text-pink-700 border border-pink-200',
 };
 
 export default function HeritageLeadDetails({
@@ -58,7 +63,7 @@ export default function HeritageLeadDetails({
   const statusCfg =
     STATUS_CONFIG[lead.status] ?? {
       label: lead.status.replace('-', ' '),
-      color: 'bg-gray-100 text-gray-800',
+      color: 'bg-gray-50 text-gray-700 border border-gray-200',
       dot: 'bg-gray-500',
     };
 
@@ -75,141 +80,213 @@ export default function HeritageLeadDetails({
 
   return (
     <div
-      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      {/* MODAL */}
+      <div className="relative flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-[0_30px_80px_rgba(0,0,0,0.4)]">
 
-        {/* ── Header banner ── */}
-        <div className="rounded-t-2xl bg-gradient-to-br from-sky-500 to-indigo-600 p-6 text-white">
-          <button
-            onClick={onClose}
-            className="absolute right-4 top-4 rounded-full bg-white/20 p-2 text-white hover:bg-white/30 transition-colors"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
+        {/* ================= HEADER ================= */}
 
-          {/* "Heritage Lead" pill */}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
-            <span
-              className={`h-2 w-2 rounded-full ${statusCfg.dot}`}
-            />
-            Heritage Lead
-          </span>
+        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-600 px-8 pb-7 pt-7 text-white">
 
-          <h2 className="mt-3 text-2xl font-bold leading-snug">
-            {lead.name}
-          </h2>
+          {/* Decorative glow */}
+          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
 
-          {/* Location */}
-          <div className="mt-2 flex items-center gap-2 text-sm text-sky-100">
-            <MapPin className="h-4 w-4 flex-shrink-0" />
-            {lead.villageOrArea}
-          </div>
-        </div>
+          <div className="relative">
 
-        {/* ── Body ── */}
-        <div className="p-6 space-y-5">
-
-          {/* Status + Category badges */}
-          <div className="flex flex-wrap gap-2">
-            <span
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${statusCfg.color}`}
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20"
+              aria-label="Close"
             >
+              <X size={20} />
+            </button>
+
+            {/* Label */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] backdrop-blur-sm">
               <span
                 className={`h-2 w-2 rounded-full ${statusCfg.dot}`}
               />
-              {statusCfg.label}
-            </span>
+              Heritage Lead
+            </div>
 
-            <span
-              className={`rounded-full px-3 py-1 text-sm font-medium ${
-                CATEGORY_COLOR[lead.category] ??
-                'bg-gray-100 text-gray-700'
-              }`}
+            {/* Title */}
+            <h2 className="mt-5 max-w-[85%] text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+              {lead.name}
+            </h2>
+
+            {/* Location */}
+            <div className="mt-3 flex items-center gap-2 text-sm font-medium text-blue-50">
+              <MapPin size={18} />
+              <span>{lead.villageOrArea}</span>
+            </div>
+
+          </div>
+        </div>
+
+        {/* ================= SCROLLABLE BODY ================= */}
+
+        <div className="overflow-y-auto">
+
+          <div className="space-y-6 p-7 sm:p-8">
+
+            {/* ================= BADGES ================= */}
+
+            <div className="flex flex-wrap gap-2.5">
+
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold ${statusCfg.color}`}
+              >
+                <span
+                  className={`h-2 w-2 rounded-full ${statusCfg.dot}`}
+                />
+                {statusCfg.label}
+              </span>
+
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold ${
+                  CATEGORY_COLOR[lead.category] ??
+                  'bg-gray-50 text-gray-700 border border-gray-200'
+                }`}
+              >
+                <Tag size={14} />
+                {lead.category}
+              </span>
+
+            </div>
+
+            {/* ================= DESCRIPTION ================= */}
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6">
+
+              <div className="flex items-center gap-3">
+
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                  <FileText size={20} />
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                    Documentation
+                  </p>
+
+                  <h3 className="mt-0.5 text-lg font-bold text-slate-900">
+                    Description
+                  </h3>
+                </div>
+
+              </div>
+
+              <p className="mt-5 text-[15px] leading-7 text-slate-600">
+                {lead.description}
+              </p>
+
+            </section>
+
+            {/* ================= METADATA ================= */}
+
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2">
+
+                {/* Submitted by */}
+                <div className="flex items-start gap-3 border-b border-slate-200 p-5 sm:border-r">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500">
+                    <User size={18} />
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">
+                      Submitted by
+                    </p>
+
+                    <p className="mt-1 text-sm font-bold text-slate-800">
+                      {lead.submittedBy}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Submitted on */}
+                {formattedDate && (
+                  <div className="flex items-start gap-3 border-b border-slate-200 p-5">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500">
+                      <Calendar size={18} />
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">
+                        Submitted on
+                      </p>
+
+                      <p className="mt-1 text-sm font-bold text-slate-800">
+                        {formattedDate}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Assigned contributor */}
+                {lead.assignedContributor && (
+                  <div className="flex items-start gap-3 p-5 sm:col-span-2">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500">
+                      <Clock size={18} />
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">
+                        Assigned contributor
+                      </p>
+
+                      <p className="mt-1 text-sm font-bold text-slate-800">
+                        {lead.assignedContributor}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+            </section>
+
+            {/* ================= CTA ================= */}
+
+            {(lead.status === 'needs-documentation' ||
+              lead.status === 'claimed') && (
+              <div className="flex items-start gap-4 rounded-2xl border border-blue-200 bg-gradient-to-br from-sky-50 to-blue-50 p-5">
+
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
+                  <MapPin size={20} />
+                </div>
+
+                <div>
+                  <p className="font-bold text-blue-900">
+                    This site needs a contributor.
+                  </p>
+
+                  <p className="mt-1 text-sm leading-6 text-blue-700">
+                    If you have knowledge of this heritage
+                    location, consider claiming it and
+                    documenting the site for LokVirasat.
+                  </p>
+                </div>
+
+              </div>
+            )}
+
+            {/* ================= CLOSE ================= */}
+
+            <button
+              onClick={onClose}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
             >
-              <Tag className="inline h-3.5 w-3.5 mr-1" />
-              {lead.category}
-            </span>
-          </div>
-
-          {/* Description */}
-          <section>
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wide">
-              <FileText className="h-4 w-4" />
-              Description
-            </h3>
-            <p className="mt-2 leading-7 text-gray-700">
-              {lead.description}
-            </p>
-          </section>
-
-          {/* Meta grid */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 rounded-xl bg-gray-50 p-4">
-
-            <div className="flex items-start gap-3">
-              <User className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
-                  Submitted by
-                </p>
-                <p className="mt-0.5 text-sm font-semibold text-gray-800">
-                  {lead.submittedBy}
-                </p>
-              </div>
-            </div>
-
-            {formattedDate && (
-              <div className="flex items-start gap-3">
-                <Calendar className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
-                    Submitted on
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold text-gray-800">
-                    {formattedDate}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {lead.assignedContributor && (
-              <div className="flex items-start gap-3 sm:col-span-2">
-                <Clock className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
-                    Assigned contributor
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold text-gray-800">
-                    {lead.assignedContributor}
-                  </p>
-                </div>
-              </div>
-            )}
+              Close
+            </button>
 
           </div>
-
-          {/* Call to action */}
-          {(lead.status === 'needs-documentation' ||
-            lead.status === 'claimed') && (
-            <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
-              <strong>This site needs a contributor.</strong>{' '}
-              If you have knowledge of this heritage location,
-              consider claiming it and documenting the site
-              for LokVirasat.
-            </div>
-          )}
-
-          {/* Close */}
-          <button
-            onClick={onClose}
-            className="w-full rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-200 transition-colors"
-          >
-            Close
-          </button>
 
         </div>
       </div>

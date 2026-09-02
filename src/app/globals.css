@@ -3725,3 +3725,21 @@ a {
   background: linear-gradient(135deg, #10b981, #059669) !important;
   border-color: rgba(16, 185, 129, 0.5) !important;
 }
+
+/* Hide scrollbar while keeping scrolling enabled */
+html {
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+}

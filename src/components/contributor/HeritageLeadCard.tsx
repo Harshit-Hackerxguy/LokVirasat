@@ -13,13 +13,24 @@ import { HeritageLead } from '@/types';
 
 interface HeritageLeadCardProps {
   lead: HeritageLead;
-  onClaim: (lead: HeritageLead) => void;
-  onViewProgress?: (lead: HeritageLead) => void;
+
+  onClaim: (
+    lead: HeritageLead
+  ) => void;
+
+  onContinueDocumentation: (
+    lead: HeritageLead
+  ) => void;
+
+  onViewProgress?: (
+    lead: HeritageLead
+  ) => void;
 }
 
 export default function HeritageLeadCard({
   lead,
   onClaim,
+  onContinueDocumentation,
   onViewProgress,
 }: HeritageLeadCardProps) {
 
@@ -32,6 +43,14 @@ export default function HeritageLeadCard({
   const isAvailable =
     lead.status === 'needs-documentation';
 
+  const isClaimed =
+    lead.status === 'claimed';
+
+  const isClaimedByCurrentContributor =
+    isClaimed &&
+    lead.assignedContributor ===
+      'Current Contributor';
+
   const isCompleted =
     lead.status === 'documented' ||
     lead.status === 'verified';
@@ -39,7 +58,10 @@ export default function HeritageLeadCard({
   return (
     <article className="heritage-lead-card">
 
-      {/* Card Header */}
+      {/* =====================================================
+          CARD HEADER
+      ===================================================== */}
+
       <div className="heritage-card-header">
 
         <div className="heritage-card-title-area">
@@ -49,6 +71,7 @@ export default function HeritageLeadCard({
           </div>
 
           <div className="heritage-card-heading">
+
             <h3>
               {lead.name}
             </h3>
@@ -56,6 +79,7 @@ export default function HeritageLeadCard({
             <span>
               {lead.category}
             </span>
+
           </div>
 
         </div>
@@ -64,95 +88,138 @@ export default function HeritageLeadCard({
           className={`heritage-card-status ${
             isAvailable
               ? 'available'
-              : lead.status === 'claimed'
+              : isClaimed
                 ? 'claimed'
                 : isCompleted
                   ? 'completed'
                   : ''
           }`}
         >
+
           {isCompleted && (
             <CheckCircle className="h-3.5 w-3.5" />
           )}
 
           {statusLabel}
+
         </span>
 
       </div>
 
-      {/* Description */}
+      {/* =====================================================
+          DESCRIPTION
+      ===================================================== */}
+
       <p className="heritage-card-description">
         {lead.description}
       </p>
 
-      {/* Metadata */}
+      {/* =====================================================
+          METADATA
+      ===================================================== */}
+
       <div className="heritage-card-meta">
 
         <div className="heritage-meta-item">
+
           <MapPin className="h-4 w-4" />
-          <span>{lead.villageOrArea}</span>
+
+          <span>
+            {lead.villageOrArea}
+          </span>
+
         </div>
 
         <div className="heritage-meta-item">
+
           <User className="h-4 w-4" />
+
           <span>
             Reported by {lead.submittedBy}
           </span>
+
         </div>
 
         <div className="heritage-meta-item">
+
           <Calendar className="h-4 w-4" />
+
           <span>
             Submitted {lead.submittedAt}
           </span>
+
         </div>
 
       </div>
 
-      {/* Assigned Contributor */}
+      {/* =====================================================
+          ASSIGNED CONTRIBUTOR
+      ===================================================== */}
+
       {lead.assignedContributor && (
+
         <div className="heritage-assignment">
 
           <MapPin className="h-4 w-4" />
 
           <span>
+
             Assigned to{' '}
+
             <strong>
               {lead.assignedContributor}
             </strong>
+
           </span>
 
         </div>
+
       )}
 
-      {/* Action */}
+      {/* =====================================================
+          ACTION
+      ===================================================== */}
+
       <div className="heritage-card-action">
 
-        {isAvailable ? (
-          <button
-            type="button"
-            onClick={() => onClaim(lead)}
-            className="heritage-claim-button"
-          >
-            Claim & Document
+  {isAvailable ? (
 
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => onViewProgress?.(lead)}
-            className={`heritage-claim-button ${
-              isCompleted
-                ? 'completed-button'
-                : ''
-            }`}
-          >
-            View Contribution Progress
+    <button
+      type="button"
+      onClick={() => onClaim(lead)}
+      className="heritage-claim-button"
+    >
+      Claim & Document
+      <ChevronRight className="h-4 w-4" />
+    </button>
 
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        )}
+  ) : lead.status === 'claimed' ? (
+
+    <button
+      type="button"
+      onClick={() => onClaim(lead)}
+      className="heritage-claim-button"
+    >
+      Continue Documentation
+      <ChevronRight className="h-4 w-4" />
+    </button>
+
+  ) : (
+
+    <button
+      type="button"
+      onClick={() => onViewProgress?.(lead)}
+      className={`heritage-claim-button ${
+        isCompleted
+          ? 'completed-button'
+          : ''
+      }`}
+    >
+      View Contribution Progress
+      <ChevronRight className="h-4 w-4" />
+    </button>
+
+  )}
 
       </div>
 

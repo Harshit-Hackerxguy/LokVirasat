@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   MapPin,
@@ -23,9 +24,7 @@ import {
   HeritageLead,
 } from '@/types';
 
-import HeritageSiteDetails from '@/components/heritage/HeritageSiteDetails';
 import HeritageLeadDetails from '@/components/heritage/HeritageLeadDetails';
-import { useAuthStore } from '@/store/useAuthStore';
 
 const InteractiveMap = dynamic(
   () => import('@/components/map/InteractiveMap'),
@@ -83,18 +82,13 @@ function convertVerifiedLeadToSite(
 }
 
 export default function MapPage() {
+  const router = useRouter();
 
   const [activeSiteId, setActiveSiteId] =
     useState<string | null>(null);
 
   const [sidebarOpen, setSidebarOpen] =
     useState(true);
-
-  const [detailsSite, setDetailsSite] =
-    useState<HeritageSite | null>(null);
-
-  const [detailsOpen, setDetailsOpen] =
-    useState(false);
 
   const [detailsLead, setDetailsLead] =
     useState<HeritageLead | null>(null);
@@ -187,32 +181,26 @@ export default function MapPage() {
     }
   }, [verifiedLeads]);
 
+  /*
+   * Marker click handling
+   *
+   * Documented / verified heritage:
+   *     → Dedicated heritage page
+   *
+   * Pending heritage lead:
+   *     → Existing lead modal
+   */
   const handleMarkerClick = useCallback(
     (markerId: string) => {
-      /*
-       * Normal / verified heritage site
-       */
+      // Normal / verified heritage site
       if (!markerId.startsWith('lead:')) {
         setActiveSiteId(markerId);
-        setSidebarOpen(true);
-
-        const site = allHeritageSites.find(
-          (item) => item.id === markerId
-        );
-
-        if (site) {
-          setDetailsSite(site);
-          setDetailsOpen(true);
-        }
-
+        router.push(`/heritage/${markerId}`);
         return;
       }
 
-      /*
-       * Heritage lead
-       */
-      const leadId =
-        markerId.replace('lead:', '');
+      // Heritage lead
+      const leadId = markerId.replace('lead:', '');
 
       const lead = pendingLeads.find(
         (item) => item.id === leadId
@@ -225,30 +213,24 @@ export default function MapPage() {
         setLeadDetailsOpen(true);
       }
     },
-    [allHeritageSites, pendingLeads]
+    [router, pendingLeads]
   );
 
+  /*
+   * Clicking a documented site in the sidebar
+   * opens its dedicated page.
+   */
   const handleSiteSelect = useCallback(
     (siteId: string) => {
       setActiveSiteId(siteId);
-
-      const site = allHeritageSites.find(
-        (item) => item.id === siteId
-      );
-
-      if (site) {
-        setDetailsSite(site);
-        setDetailsOpen(true);
-      }
+      router.push(`/heritage/${siteId}`);
     },
-    [allHeritageSites]
+    [router]
   );
 
-  const handleCloseDetails = useCallback(() => {
-    setDetailsOpen(false);
-    setDetailsSite(null);
-  }, []);
-
+  /*
+   * Close heritage lead modal.
+   */
   const handleCloseLeadDetails = useCallback(() => {
     setLeadDetailsOpen(false);
     setDetailsLead(null);
@@ -396,17 +378,6 @@ export default function MapPage() {
 
         </div>
       </aside>
-
-      {/* Heritage site details */}
-      {detailsOpen && detailsSite && (
-        <HeritageSiteDetails
-          site={detailsSite}
-          onClose={handleCloseDetails}
-          onReportCondition={() => {
-            // Condition report feature – coming soon
-          }}
-        />
-      )}
 
       {/* Heritage lead details */}
       {leadDetailsOpen && detailsLead && (
