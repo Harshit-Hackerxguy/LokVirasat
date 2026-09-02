@@ -1,0 +1,15 @@
+# Python virtual environments
+venv/
+env/
+.venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Uploaded files
+uploads/

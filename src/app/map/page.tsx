@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
@@ -15,8 +15,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
-import { HERITAGE_SITES } from '@/data/heritageSites';
-import { HERITAGE_LEADS } from '@/data/heritageLeads';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 import {
   HeritageCategory,
@@ -33,7 +32,7 @@ const InteractiveMap = dynamic(
   }
 );
 
-const STORAGE_KEY = 'lokvirasat-heritage-leads';
+
 
 function CategoryIcon({
   category,
@@ -84,6 +83,92 @@ function convertVerifiedLeadToSite(
 export default function MapPage() {
   const router = useRouter();
 
+  // ── API Data ────────────────────────────────────────────────────────────
+  const [apiSites, setApiSites] = useState<HeritageSite[]>([]);
+  const [apiLeads, setApiLeads] = useState<HeritageLead[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const hasFetched = useRef(false);
+
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
+    async function fetchData() {
+      setDataLoading(true);
+      try {
+        const [sitesRes, leadsRes] = await Promise.all([
+          fetch(`${API_URL}/api/sites/`),
+          fetch(`${API_URL}/api/leads/`),
+        ]);
+
+        if (sitesRes.ok) {
+          const raw = await sitesRes.json();
+          // Map snake_case API fields → camelCase frontend types
+          const mapped: HeritageSite[] = raw.map((s: {
+            id: string;
+            name: string;
+            description: string;
+            category: HeritageCategory;
+            coordinates: [number, number];
+            zoom_level: number;
+            pitch: number;
+            bearing: number;
+            verification_status: string;
+            last_updated: string | null;
+            images: string[];
+          }) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            category: s.category,
+            coordinates: s.coordinates,
+            zoomLevel: s.zoom_level,
+            pitch: s.pitch,
+            bearing: s.bearing,
+            verificationStatus: s.verification_status as HeritageSite['verificationStatus'],
+            lastUpdated: s.last_updated ?? undefined,
+            images: s.images ?? [],
+          }));
+          setApiSites(mapped);
+        }
+
+        if (leadsRes.ok) {
+          const raw = await leadsRes.json();
+          const mapped: HeritageLead[] = raw.map((l: {
+            id: string;
+            name: string;
+            description: string;
+            category: HeritageCategory;
+            approximate_location: [number, number];
+            village_or_area: string;
+            submitted_by: string;
+            submitted_at: string;
+            status: HeritageLead['status'];
+            assigned_contributor?: string;
+          }) => ({
+            id: l.id,
+            name: l.name,
+            description: l.description,
+            category: l.category,
+            approximateLocation: l.approximate_location,
+            villageOrArea: l.village_or_area,
+            submittedBy: l.submitted_by,
+            submittedAt: l.submitted_at,
+            status: l.status,
+            assignedContributor: l.assigned_contributor,
+          }));
+          setApiLeads(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to load heritage data from API:', err);
+      } finally {
+        setDataLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
   const [activeSiteId, setActiveSiteId] =
     useState<string | null>(null);
 
@@ -96,90 +181,24 @@ export default function MapPage() {
   const [leadDetailsOpen, setLeadDetailsOpen] =
     useState(false);
 
-  const [verifiedLeads, setVerifiedLeads] =
-    useState<HeritageLead[]>([]);
-
   /*
-   * Load verified contributions from localStorage.
-   */
-  useEffect(() => {
-    try {
-      const saved =
-        window.localStorage.getItem(STORAGE_KEY);
-
-      if (!saved) {
-        setVerifiedLeads([]);
-        return;
-      }
-
-      const parsed =
-        JSON.parse(saved) as HeritageLead[];
-
-      if (Array.isArray(parsed)) {
-        setVerifiedLeads(
-          parsed.filter(
-            (lead) => lead.status === 'verified'
-          )
-        );
-      }
-    } catch (error) {
-      console.error(
-        'Failed to load verified heritage leads:',
-        error
-      );
-
-      setVerifiedLeads([]);
-    }
-  }, []);
-
-  /*
-   * Combine permanent heritage sites with
-   * moderator-verified community submissions.
+   * Sites come directly from the API.
+   * Verified leads (from API status='verified') are promoted to sites.
    */
   const allHeritageSites = useMemo(() => {
-    const verifiedSites =
-      verifiedLeads.map(
-        convertVerifiedLeadToSite
-      );
-
-    return [
-      ...HERITAGE_SITES,
-      ...verifiedSites,
-    ];
-  }, [verifiedLeads]);
+    const promotedSites = apiLeads
+      .filter((l) => l.status === 'verified')
+      .map(convertVerifiedLeadToSite);
+    return [...apiSites, ...promotedSites];
+  }, [apiSites, apiLeads]);
 
   /*
-   * Leads that are NOT verified yet.
+   * Leads that are NOT verified yet – shown as unconfirmed pins.
    */
-  const pendingLeads = useMemo(() => {
-    try {
-      const saved =
-        window.localStorage.getItem(STORAGE_KEY);
-
-      if (!saved) {
-        return HERITAGE_LEADS.filter(
-          (lead) => lead.status !== 'verified'
-        );
-      }
-
-      const parsed =
-        JSON.parse(saved) as HeritageLead[];
-
-      if (!Array.isArray(parsed)) {
-        return HERITAGE_LEADS.filter(
-          (lead) => lead.status !== 'verified'
-        );
-      }
-
-      return parsed.filter(
-        (lead) => lead.status !== 'verified'
-      );
-    } catch {
-      return HERITAGE_LEADS.filter(
-        (lead) => lead.status !== 'verified'
-      );
-    }
-  }, [verifiedLeads]);
+  const pendingLeads = useMemo(
+    () => apiLeads.filter((l) => l.status !== 'verified'),
+    [apiLeads]
+  );
 
   /*
    * Marker click handling
@@ -238,6 +257,16 @@ export default function MapPage() {
 
   return (
     <div className="map-page">
+
+      {/* Loading overlay while API data is being fetched */}
+      {dataLoading && (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-gray-950/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-white text-sm font-medium">Loading heritage sites…</p>
+          </div>
+        </div>
+      )}
 
       {/* Full-screen interactive map */}
       <InteractiveMap
