@@ -16,9 +16,10 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
-from . import crud, schemas
-from .database import get_db
-from .config import settings
+import crud
+import schemas
+from database import get_db
+from config import settings
 
 router = APIRouter(prefix="/api/sites", tags=["Heritage Sites"])
 

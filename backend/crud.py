@@ -5,7 +5,8 @@ CRUD helpers – thin layer between routers and the database.
 from __future__ import annotations
 from sqlalchemy.orm import Session
 from geoalchemy2.elements import WKTElement
-from  import models, schemas
+import models
+import schemas
 
 
 # ---------------------------------------------------------------------------

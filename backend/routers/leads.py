@@ -10,9 +10,10 @@ Endpoints:
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 
-from . import crud, schemas
-from .database import get_db
-from .models import LeadStatus
+import crud
+import schemas
+from database import get_db
+from models import LeadStatus
 
 router = APIRouter(prefix="/api/leads", tags=["Heritage Leads"])
 
