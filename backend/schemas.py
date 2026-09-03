@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
-from .models import HeritageCategory, VerificationStatus, LeadStatus
+from models import HeritageCategory, VerificationStatus, LeadStatus
 
 
 # ---------------------------------------------------------------------------

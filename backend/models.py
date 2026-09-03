@@ -22,7 +22,7 @@ from sqlalchemy.sql import func
 from geoalchemy2 import Geometry
 import enum
 
-from .database import Base
+from database import Base
 
 
 # ---------------------------------------------------------------------------
