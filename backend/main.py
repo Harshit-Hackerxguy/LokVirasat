@@ -10,9 +10,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .config import settings
-from .database import engine, Base
-from .routers import sites, leads
+from config import settings
+from database import engine, Base
+from routers import sites, leads
 
 # Create all tables (idempotent – uses IF NOT EXISTS under the hood)
 # In production you would use Alembic migrations instead.
