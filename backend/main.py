@@ -13,6 +13,11 @@ from fastapi.staticfiles import StaticFiles
 from config import settings
 from database import engine, Base
 from routers import sites, leads
+from sqlalchemy import text
+
+# Ensure PostGIS extension is created before tables are created
+with engine.begin() as conn:
+    conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
 
 # Create all tables (idempotent – uses IF NOT EXISTS under the hood)
 # In production you would use Alembic migrations instead.
