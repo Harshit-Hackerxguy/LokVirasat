@@ -8,10 +8,34 @@ export enum HeritageCategory {
   TraditionalCraftHub = 'Traditional Craft Hub',
 }
 
+/**
+ * 4-Tier Heritage Trust Journey
+ * community-reported   → user submits a raw tip
+ * community-corroborated → multiple community members confirm
+ * evidence-supported   → photos / documents uploaded
+ * authority-verified   → official expert review completed
+ */
 export type VerificationStatus =
-  | 'reported'
-  | 'community-verified'
+  | 'community-reported'
+  | 'community-corroborated'
+  | 'evidence-supported'
   | 'authority-verified';
+
+/** Map old values → display-friendly names */
+export const VERIFICATION_STATUS_LABELS: Record<VerificationStatus, string> = {
+  'community-reported':    'Community Reported',
+  'community-corroborated': 'Community Corroborated',
+  'evidence-supported':    'Evidence Supported',
+  'authority-verified':    'Authority Verified',
+};
+
+/** Trust-level colour tokens (Tailwind / CSS variable friendly) */
+export const VERIFICATION_STATUS_COLORS: Record<VerificationStatus, string> = {
+  'community-reported':    '#eab308', // yellow
+  'community-corroborated': '#f97316', // orange
+  'evidence-supported':    '#3b82f6', // blue
+  'authority-verified':    '#22c55e', // green
+};
 
 export interface HeritageSite {
   id: string;
@@ -81,7 +105,24 @@ export interface HeritageLead {
   documentedAt?: string;
 
   documentedBy?: string;
+
+  // ── New fields for richer community form submission ───────────────────────
+  /** Name of the person who shared or knows this heritage story */
+  storytellerName?: string;
+
+  /**
+   * Primary language of the oral account or documentation
+   * e.g. 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi', 'English'
+   */
+  language?: string;
+
+  /**
+   * Links or notes pointing to supporting evidence
+   * (external article URL, document link, archive reference, etc.)
+   */
+  supportingEvidence?: string;
 }
+
 
 export enum IssueType {
   Damage = 'Damage',

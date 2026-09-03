@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
 import {
@@ -15,6 +15,7 @@ import {
   Sparkles,
   Mic,
   X,
+  Loader2,
 } from 'lucide-react';
 
 import { HERITAGE_SITES } from '@/data/heritageSites';
@@ -22,6 +23,7 @@ import { HERITAGE_SITES } from '@/data/heritageSites';
 import {
   HeritageSite,
   HeritageLead,
+  HeritageCategory,
   ConditionReport,
 } from '@/types';
 
@@ -29,6 +31,8 @@ import StoryRecorder from '@/components/audio/StoryRecorder';
 import ConditionReportModal from '@/components/forms/ConditionReportModal';
 
 import styles from './HeritagePage.module.css';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 const STORAGE_KEY =
   'lokvirasat-heritage-leads';
@@ -53,10 +57,18 @@ export default function HeritagePage() {
     useState(false);
 
   /* ─────────────────────────────────────────────
-     FIND HERITAGE SITE
+     API FETCH STATE
   ───────────────────────────────────────────── */
 
-  const site = useMemo<HeritageSite | null>(() => {
+  const [apiSite, setApiSite] = useState<HeritageSite | null>(null);
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiFetched, setApiFetched] = useState(false);
+
+  /* ─────────────────────────────────────────────
+     FIND HERITAGE SITE (static + localStorage)
+  ───────────────────────────────────────────── */
+
+  const localSite = useMemo<HeritageSite | null>(() => {
 
     /*
      * First check the normal/static heritage sites.
@@ -133,7 +145,7 @@ export default function HeritagePage() {
         bearing: 0,
 
         verificationStatus:
-          'community-verified',
+          'community-corroborated',
 
         lastUpdated:
           lead.documentedAt
@@ -192,6 +204,85 @@ export default function HeritagePage() {
   }, [id]);
 
   /* ─────────────────────────────────────────────
+     FETCH FROM API (fallback when not found locally)
+  ───────────────────────────────────────────── */
+
+  useEffect(() => {
+    // Skip API fetch if already found locally
+    if (localSite) return;
+    // Don't re-fetch
+    if (apiFetched) return;
+
+    let cancelled = false;
+
+    async function fetchSite() {
+      setApiLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/sites/${encodeURIComponent(id)}`);
+        if (!res.ok) {
+          setApiSite(null);
+          return;
+        }
+        const raw = await res.json();
+
+        if (cancelled) return;
+
+        // Map snake_case API fields → camelCase frontend types
+        const mapped: HeritageSite = {
+          id: raw.id,
+          name: raw.name,
+          description: raw.description,
+          category: raw.category as HeritageCategory,
+          coordinates: raw.coordinates,
+          zoomLevel: raw.zoom_level,
+          pitch: raw.pitch,
+          bearing: raw.bearing,
+          verificationStatus: raw.verification_status as HeritageSite['verificationStatus'],
+          lastUpdated: raw.last_updated
+            ? raw.last_updated.split('T')[0]
+            : undefined,
+          images: raw.images ?? [],
+        };
+
+        setApiSite(mapped);
+      } catch (err) {
+        console.error('Failed to fetch site from API:', err);
+        setApiSite(null);
+      } finally {
+        if (!cancelled) {
+          setApiLoading(false);
+          setApiFetched(true);
+        }
+      }
+    }
+
+    fetchSite();
+
+    return () => { cancelled = true; };
+  }, [id, localSite, apiFetched]);
+
+  /* ─────────────────────────────────────────────
+     RESOLVED SITE (local first, then API)
+  ───────────────────────────────────────────── */
+
+  const site = localSite ?? apiSite;
+
+  /* ─────────────────────────────────────────────
+     LOADING STATE
+  ───────────────────────────────────────────── */
+
+  if (!site && apiLoading) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.notFound}>
+          <Loader2 size={36} className={styles.spinner} />
+          <p>Loading heritage site…</p>
+        </div>
+      </main>
+    );
+  }
+
+  /* ─────────────────────────────────────────────
      NOT FOUND
   ───────────────────────────────────────────── */
 
@@ -234,13 +325,15 @@ export default function HeritagePage() {
   ───────────────────────────────────────────── */
 
   const isCommunityVerified =
-    site.verificationStatus ===
-    'community-verified';
+    site.verificationStatus === 'community-corroborated'
+    || site.verificationStatus === 'evidence-supported'
+    || site.verificationStatus === 'authority-verified';
 
   const statusLabel =
-    isCommunityVerified
-      ? 'Community Verified'
-      : 'Reported';
+    site.verificationStatus
+      ? site.verificationStatus.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')
+      : 'Community Reported';
+
 
   /* ─────────────────────────────────────────────
      MAP HANDLER

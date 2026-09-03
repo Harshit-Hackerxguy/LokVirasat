@@ -19,33 +19,42 @@ interface VerificationStatusProps {
 
 const steps = [
   {
-    key: 'reported',
-    title: 'Contribution Submitted',
+    key: 'community-reported' as const,
+    title: 'Community Submitted',
     description:
-      'The heritage information has been submitted to LokVirasat.',
+      'The heritage information has been submitted to LokVirasat by a community member.',
     icon: FileCheck2,
   },
   {
-    key: 'community-verified',
-    title: 'Community Review',
+    key: 'community-corroborated' as const,
+    title: 'Community Corroborated',
     description:
-      'Community contributors review the submitted information and evidence.',
+      'Multiple community members have confirmed the existence of this site.',
     icon: Users,
   },
   {
-    key: 'authority-verified',
-    title: 'Authority Verification',
+    key: 'evidence-supported' as const,
+    title: 'Evidence Supported',
     description:
-      'The heritage record can be verified by an appropriate local authority.',
+      'Supporting photographs, documents, or oral recordings have been reviewed.',
+    icon: CheckCircle2,
+  },
+  {
+    key: 'authority-verified' as const,
+    title: 'Authority Verified',
+    description:
+      'The heritage record has been verified by an appropriate local or national authority.',
     icon: ShieldCheck,
   },
 ];
 
 const stepOrder: Record<VerificationStatusType, number> = {
-  reported: 0,
-  'community-verified': 1,
-  'authority-verified': 2,
+  'community-reported':    0,
+  'community-corroborated': 1,
+  'evidence-supported':    2,
+  'authority-verified':    3,
 };
+
 
 export default function VerificationStatus({
   status,

@@ -11,9 +11,12 @@ import {
   ChevronRight,
   ImageOff,
   Calendar,
+  Sparkles,
 } from 'lucide-react';
 
-import { HeritageSite } from '@/types';
+import { HeritageSite, VERIFICATION_STATUS_COLORS, VERIFICATION_STATUS_LABELS } from '@/types';
+import TrustCard from '@/components/verification/TrustCard';
+import HeritageAssistant from '@/components/heritage/HeritageAssistant';
 
 interface HeritageSiteDetailsProps {
   site: HeritageSite | null;
@@ -43,18 +46,13 @@ export default function HeritageSiteDetails({
       i === images.length - 1 ? 0 : i + 1
     );
 
-  const verificationLabel =
-    site.verificationStatus
-      ?.replace(/-/g, ' ')
-      .replace(/\b\w/g, (char) =>
-        char.toUpperCase()
-      );
+  const verificationLabel = site.verificationStatus
+    ? VERIFICATION_STATUS_LABELS[site.verificationStatus] ?? site.verificationStatus
+    : null;
 
-  const verificationColor: Record<string, string> = {
-    Reported: 'bg-yellow-100 text-yellow-700',
-    'Community Verified': 'bg-blue-100 text-blue-700',
-    'Authority Verified': 'bg-green-100 text-green-700',
-  };
+  const verificationColor = site.verificationStatus
+    ? VERIFICATION_STATUS_COLORS[site.verificationStatus]
+    : '#6b7280';
 
   const categoryColor: Record<string, string> = {
     Monument: 'bg-orange-100 text-orange-700',
@@ -181,10 +179,12 @@ export default function HeritageSiteDetails({
 
             {verificationLabel && (
               <span
-                className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ${
-                  verificationColor[verificationLabel] ??
-                  'bg-gray-100 text-gray-700'
-                }`}
+                className="flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium"
+                style={{
+                  background: `${verificationColor}20`,
+                  color: verificationColor,
+                  border: `1px solid ${verificationColor}40`,
+                }}
               >
                 <CheckCircle className="h-4 w-4" />
                 {verificationLabel}
@@ -263,6 +263,22 @@ export default function HeritageSiteDetails({
               Explore the site's history, community stories
               and visitor information through LokVirasat.
             </p>
+          </section>
+
+          {/* Trust Journey */}
+          {site.verificationStatus && (
+            <section className="mt-6">
+              <TrustCard currentStatus={site.verificationStatus} />
+            </section>
+          )}
+
+          {/* AI Heritage Assistant */}
+          <section className="mt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-purple-500" />
+              <h3 className="text-lg font-semibold text-gray-900">Ask the Heritage Assistant</h3>
+            </div>
+            <HeritageAssistant siteId={site.id} siteName={site.name} />
           </section>
 
           {/* Actions */}

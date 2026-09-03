@@ -72,7 +72,7 @@ function convertVerifiedLeadToSite(
     zoomLevel: 15,
     pitch: 45,
     bearing: 0,
-    verificationStatus: 'community-verified',
+    verificationStatus: 'community-corroborated',
     lastUpdated: new Date()
       .toISOString()
       .split('T')[0],
@@ -317,8 +317,9 @@ export default function MapPage() {
               activeSiteId === site.id;
 
             const isCommunityVerified =
-              site.verificationStatus ===
-              'community-verified';
+              site.verificationStatus === 'community-corroborated'
+              || site.verificationStatus === 'evidence-supported'
+              || site.verificationStatus === 'authority-verified';
 
             return (
               <button

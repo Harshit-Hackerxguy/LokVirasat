@@ -38,9 +38,10 @@ class HeritageCategory(str, enum.Enum):
 
 
 class VerificationStatus(str, enum.Enum):
-    reported = "reported"
-    community_verified = "community-verified"
-    authority_verified = "authority-verified"
+    community_reported      = "community-reported"
+    community_corroborated  = "community-corroborated"
+    evidence_supported      = "evidence-supported"
+    authority_verified      = "authority-verified"
 
 
 class LeadStatus(str, enum.Enum):
@@ -72,7 +73,7 @@ class HeritageSite(Base):
 
     verification_status = Column(
         SAEnum(VerificationStatus),
-        default=VerificationStatus.reported,
+        default=VerificationStatus.community_reported,
         nullable=False,
     )
 

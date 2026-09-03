@@ -28,6 +28,7 @@ import { useMapStore } from '@/store/useMapStore';
 import {
   heritageSchema,
   HeritageFormValues,
+  SUPPORTED_LANGUAGES,
 } from '@/utils/validations/heritage';
 
 import {
@@ -348,6 +349,16 @@ export default function AddHeritageModal() {
 
         approximateLocation:
           data.coordinates,
+
+        // New community submission fields
+        storytellerName:
+          data.storytellerName || undefined,
+
+        language:
+          data.language || undefined,
+
+        supportingEvidence:
+          data.supportingEvidence || undefined,
       };
 
       // -------------------------------------------------------
@@ -879,6 +890,71 @@ export default function AddHeritageModal() {
 
                 )}
 
+              </div>
+
+              {/* =================================================
+                  ORAL HERITAGE DETAILS (NEW)
+              ================================================= */}
+
+              <div className="space-y-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                <p className="text-sm font-semibold text-blue-900">
+                  🗣 Oral Heritage Details <span className="font-normal text-blue-600">(optional)</span>
+                </p>
+
+                {/* Storyteller Name */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Storyteller / Source Name
+                  </label>
+                  <input
+                    {...register('storytellerName')}
+                    type="text"
+                    placeholder="e.g. Ramesh Kumar, village elder"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">
+                    Name of the person who shared this heritage story.
+                  </p>
+                </div>
+
+                {/* Language */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Primary Language of Account
+                  </label>
+                  <select
+                    {...register('language')}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                    defaultValue=""
+                  >
+                    <option value="">Select language...</option>
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <option key={lang} value={lang}>{lang}</option>
+                    ))}
+                  </select>
+                  {errors.language && (
+                    <p className="mt-1 text-sm text-red-500">{errors.language.message}</p>
+                  )}
+                </div>
+
+                {/* Supporting Evidence */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Supporting Evidence URL
+                  </label>
+                  <input
+                    {...register('supportingEvidence')}
+                    type="url"
+                    placeholder="https://example.com/article-or-document"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                  />
+                  {errors.supportingEvidence && (
+                    <p className="mt-1 text-sm text-red-500">{errors.supportingEvidence.message}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400">
+                    Link to an article, document, or archive that supports this heritage claim.
+                  </p>
+                </div>
               </div>
 
               {/* =================================================

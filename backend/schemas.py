@@ -38,7 +38,7 @@ class HeritageSiteCreate(BaseModel):
     zoom_level: float = 15.0
     pitch: float = 45.0
     bearing: float = 0.0
-    verification_status: VerificationStatus = VerificationStatus.reported
+    verification_status: VerificationStatus = VerificationStatus.community_reported
 
 
 class HeritageSiteOut(BaseModel):
