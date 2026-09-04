@@ -136,7 +136,7 @@ export interface ConditionReport {
   siteId: string;
   issueType: IssueType;
   photoUrl: string;
-  exifCoords: Coordinates;
+
   verified: boolean;
   description: string;
 }

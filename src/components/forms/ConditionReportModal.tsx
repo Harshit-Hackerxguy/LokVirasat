@@ -3,31 +3,20 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
-import exifr from 'exifr';
 import {
   X,
   Camera,
   Shield,
   ShieldCheck,
   ShieldAlert,
-  AlertTriangle,
-  MapPin,
   CheckCircle2,
-  Loader2,
   Upload,
   Trash2,
 } from 'lucide-react';
 
 import {
-  calculateHaversineDistance,
-  VERIFICATION_RADIUS_METERS,
-  type GeoCoord,
-} from '@/utils/geo';
-
-import {
   IssueType,
   type ConditionReport,
-  type Coordinates,
 } from '@/types';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -55,23 +44,6 @@ interface ConditionReportModalProps {
 interface FormValues {
   issueType: IssueType | '';
   description: string;
-}
-
-type VerificationStatus =
-  | 'idle'
-  | 'reading-exif'
-  | 'requesting-gps'
-  | 'verifying'
-  | 'verified'
-  | 'failed'
-  | 'error';
-
-interface VerificationState {
-  status: VerificationStatus;
-  message: string;
-  exifCoords: GeoCoord | null;
-  browserCoords: GeoCoord | null;
-  distance: number | null;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -206,20 +178,14 @@ export default function ConditionReportModal({
   const [previewUrl, setPreviewUrl] =
     useState<string | null>(null);
 
+  const [locationVerified, setLocationVerified] =
+    useState<boolean>(false);
+
   const [toast, setToast] =
     useState<{
       type: 'error' | 'success';
       message: string;
     } | null>(null);
-
-  const [verification, setVerification] =
-    useState<VerificationState>({
-      status: 'idle',
-      message: '',
-      exifCoords: null,
-      browserCoords: null,
-      distance: null,
-    });
 
   const {
     register,
@@ -277,315 +243,9 @@ export default function ConditionReportModal({
       setSelectedFile(null);
       setPreviewUrl(null);
       setToast(null);
-
-      setVerification({
-        status: 'idle',
-        message: '',
-        exifCoords: null,
-        browserCoords: null,
-        distance: null,
-      });
+      setLocationVerified(false);
     }
   }, [isOpen, reset]);
-
-  /* ─────────────────────────────────────────
-     BROWSER GEOLOCATION
-  ───────────────────────────────────────── */
-
-  const getBrowserLocation =
-    useCallback((): Promise<GeoCoord> => {
-      return new Promise(
-        (resolve, reject) => {
-          if (!navigator.geolocation) {
-            reject(
-              new Error(
-                'Geolocation API is not supported by this browser.'
-              )
-            );
-
-            return;
-          }
-
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              resolve({
-                latitude:
-                  position.coords.latitude,
-                longitude:
-                  position.coords.longitude,
-              });
-            },
-
-            (error) => {
-              switch (error.code) {
-                case error.PERMISSION_DENIED:
-                  reject(
-                    new Error(
-                      'Location permission denied. Please enable location access in your browser settings to verify reports.'
-                    )
-                  );
-                  break;
-
-                case error.POSITION_UNAVAILABLE:
-                  reject(
-                    new Error(
-                      'Location information is unavailable. Please ensure GPS is enabled on your device.'
-                    )
-                  );
-                  break;
-
-                case error.TIMEOUT:
-                  reject(
-                    new Error(
-                      'Location request timed out. Please try again in an area with better signal.'
-                    )
-                  );
-                  break;
-
-                default:
-                  reject(
-                    new Error(
-                      `An unknown geolocation error occurred (code: ${error.code}).`
-                    )
-                  );
-              }
-            },
-
-            {
-              enableHighAccuracy: true,
-              timeout: 15_000,
-              maximumAge: 0,
-            }
-          );
-        }
-      );
-    }, []);
-
-  /* ─────────────────────────────────────────
-     EXIF GPS EXTRACTION
-  ───────────────────────────────────────── */
-
-  const extractExifGps =
-    useCallback(
-      async (
-        file: File
-      ): Promise<GeoCoord> => {
-        try {
-          const gps =
-            await exifr.gps(file);
-
-          if (
-            !gps ||
-            gps.latitude == null ||
-            gps.longitude == null
-          ) {
-            throw new Error(
-              'No GPS data found in the photo\'s EXIF metadata. Please upload a photo taken with location services enabled.'
-            );
-          }
-
-          return {
-            latitude:
-              gps.latitude,
-            longitude:
-              gps.longitude,
-          };
-        } catch (err) {
-          if (
-            err instanceof Error &&
-            err.message.includes(
-              'No GPS data'
-            )
-          ) {
-            throw err;
-          }
-
-          throw new Error(
-            'Could not read photo metadata. The file may be corrupted or in an unsupported format.'
-          );
-        }
-      },
-      []
-    );
-
-  /* ─────────────────────────────────────────
-     FULL VERIFICATION PIPELINE
-  ───────────────────────────────────────── */
-
-  const runVerification =
-    useCallback(
-      async (file: File) => {
-        /* Step 1: Read EXIF */
-
-        setVerification(
-          (prev) => ({
-            ...prev,
-            status:
-              'reading-exif',
-            message:
-              'Extracting GPS data from photo…',
-          })
-        );
-
-        let exifCoords: GeoCoord;
-
-        try {
-          exifCoords =
-            await extractExifGps(
-              file
-            );
-        } catch (err) {
-          const msg =
-            err instanceof Error
-              ? err.message
-              : 'Failed to read EXIF data.';
-
-          setVerification({
-            status: 'error',
-            message: msg,
-            exifCoords: null,
-            browserCoords: null,
-            distance: null,
-          });
-
-          setToast({
-            type: 'error',
-            message: msg,
-          });
-
-          return;
-        }
-
-        /* Step 2: Browser location */
-
-        setVerification(
-          (prev) => ({
-            ...prev,
-            status:
-              'requesting-gps',
-            message:
-              'Requesting your current location…',
-            exifCoords,
-          })
-        );
-
-        let browserCoords: GeoCoord;
-
-        try {
-          browserCoords =
-            await getBrowserLocation();
-        } catch (err) {
-          const msg =
-            err instanceof Error
-              ? err.message
-              : 'Failed to get browser location.';
-
-          setVerification({
-            status: 'error',
-            message: msg,
-            exifCoords,
-            browserCoords: null,
-            distance: null,
-          });
-
-          setToast({
-            type: 'error',
-            message: msg,
-          });
-
-          return;
-        }
-
-        /* Step 3: Calculate distance */
-
-        setVerification(
-          (prev) => ({
-            ...prev,
-            status: 'verifying',
-            message:
-              'Calculating distance…',
-            browserCoords,
-          })
-        );
-
-        let distance: number;
-
-        try {
-          distance =
-            calculateHaversineDistance(
-              exifCoords,
-              browserCoords
-            );
-        } catch (err) {
-          const msg =
-            err instanceof Error
-              ? err.message
-              : 'Distance calculation failed.';
-
-          setVerification({
-            status: 'error',
-            message: msg,
-            exifCoords,
-            browserCoords,
-            distance: null,
-          });
-
-          setToast({
-            type: 'error',
-            message: msg,
-          });
-
-          return;
-        }
-
-        /* Step 4: Verdict */
-
-        if (
-          distance >
-          VERIFICATION_RADIUS_METERS
-        ) {
-          setVerification({
-            status: 'failed',
-            message:
-              `Verification Failed: Photo location does not match your current location. Distance: ${Math.round(
-                distance
-              )}m (max: ${VERIFICATION_RADIUS_METERS}m).`,
-            exifCoords,
-            browserCoords,
-            distance,
-          });
-
-          setToast({
-            type: 'error',
-            message:
-              'Verification Failed: Photo location does not match your current location.',
-          });
-        } else {
-          setVerification({
-            status: 'verified',
-            message:
-              `Location verified! Distance: ${Math.round(
-                distance
-              )}m.`,
-            exifCoords,
-            browserCoords,
-            distance,
-          });
-
-          setToast({
-            type: 'success',
-            message:
-              `Photo location verified (${Math.round(
-                distance
-              )}m away).`,
-          });
-        }
-      },
-      [
-        extractExifGps,
-        getBrowserLocation,
-      ]
-    );
 
   /* ─────────────────────────────────────────
      FILE CHANGE HANDLER
@@ -624,17 +284,13 @@ export default function ConditionReportModal({
         }
 
         setSelectedFile(file);
+        setLocationVerified(false); // Uncheck when new image is selected
 
         setPreviewUrl(
           URL.createObjectURL(file)
         );
-
-        await runVerification(file);
       },
-      [
-        previewUrl,
-        runVerification,
-      ]
+      [previewUrl]
     );
 
   /* ─────────────────────────────────────────
@@ -651,14 +307,7 @@ export default function ConditionReportModal({
 
       setSelectedFile(null);
       setPreviewUrl(null);
-
-      setVerification({
-        status: 'idle',
-        message: '',
-        exifCoords: null,
-        browserCoords: null,
-        distance: null,
-      });
+      setLocationVerified(false); // Reset checkbox when removed
 
       if (fileInputRef.current) {
         fileInputRef.current.value =
@@ -693,10 +342,7 @@ export default function ConditionReportModal({
           return;
         }
 
-        if (
-          verification.status !==
-          'verified'
-        ) {
+        if (!locationVerified) {
           setToast({
             type: 'error',
             message:
@@ -725,16 +371,6 @@ export default function ConditionReportModal({
             photoUrl:
               previewUrl ?? '',
 
-            exifCoords: [
-              verification
-                .exifCoords!
-                .longitude,
-
-              verification
-                .exifCoords!
-                .latitude,
-            ] as Coordinates,
-
             verified: true,
 
             description:
@@ -760,171 +396,13 @@ export default function ConditionReportModal({
       },
       [
         selectedFile,
-        verification,
+        locationVerified,
         siteId,
         previewUrl,
         onSubmit,
         onClose,
       ]
     );
-
-  /* ─────────────────────────────────────────
-     VERIFICATION STATUS INDICATOR
-  ───────────────────────────────────────── */
-
-  const renderVerificationBadge =
-    () => {
-      const {
-        status,
-        message,
-        distance,
-      } = verification;
-
-      const configs: Record<
-        VerificationStatus,
-        {
-          icon: React.ReactNode;
-          className: string;
-        }
-      > = {
-        idle: {
-          icon: <Shield size={16} />,
-          className:
-            'verification-badge--idle',
-        },
-
-        'reading-exif': {
-          icon: (
-            <Loader2
-              size={16}
-              className="spin"
-            />
-          ),
-          className:
-            'verification-badge--loading',
-        },
-
-        'requesting-gps': {
-          icon: (
-            <Loader2
-              size={16}
-              className="spin"
-            />
-          ),
-          className:
-            'verification-badge--loading',
-        },
-
-        verifying: {
-          icon: (
-            <Loader2
-              size={16}
-              className="spin"
-            />
-          ),
-          className:
-            'verification-badge--loading',
-        },
-
-        verified: {
-          icon: (
-            <ShieldCheck
-              size={16}
-            />
-          ),
-          className:
-            'verification-badge--verified',
-        },
-
-        failed: {
-          icon: (
-            <ShieldAlert
-              size={16}
-            />
-          ),
-          className:
-            'verification-badge--failed',
-        },
-
-        error: {
-          icon: (
-            <AlertTriangle
-              size={16}
-            />
-          ),
-          className:
-            'verification-badge--error',
-        },
-      };
-
-      const config =
-        configs[status];
-
-      return (
-        <motion.div
-          className={`verification-badge ${config.className}`}
-          layout
-          initial={{
-            opacity: 0,
-            height: 0,
-          }}
-          animate={{
-            opacity: 1,
-            height: 'auto',
-          }}
-          transition={{
-            duration: 0.3,
-          }}
-        >
-          <div className="verification-badge__header">
-            {config.icon}
-
-            <span className="verification-badge__label">
-              {status === 'idle'
-                ? 'Location Verification'
-                : status ===
-                    'verified'
-                  ? 'Verified'
-                  : status ===
-                      'failed'
-                    ? 'Verification Failed'
-                    : status ===
-                        'error'
-                      ? 'Error'
-                      : 'Verifying…'}
-            </span>
-          </div>
-
-          {message && (
-            <p className="verification-badge__message">
-              {message}
-            </p>
-          )}
-
-          {distance != null &&
-            status !== 'idle' && (
-              <div className="verification-badge__distance">
-                <MapPin size={12} />
-
-                <span>
-                  {Math.round(
-                    distance
-                  )}
-                  m distance
-                </span>
-
-                <span className="verification-badge__threshold">
-                  /{' '}
-                  {
-                    VERIFICATION_RADIUS_METERS
-                  }
-                  m max
-                </span>
-              </div>
-            )}
-        </motion.div>
-      );
-    };
 
   /* ═══════════════════════════════════════════════════════════════════════════
      Render
@@ -1123,14 +601,11 @@ export default function ConditionReportModal({
                     />
 
                     <span className="upload-zone__title">
-                      Upload a geotagged
-                      photo
+                      Upload a photo
                     </span>
 
                     <span className="upload-zone__subtitle">
-                      JPEG, PNG, or HEIC •
-                      Must contain GPS EXIF
-                      data
+                      JPEG, PNG, or HEIC
                     </span>
 
                     <input
@@ -1194,9 +669,21 @@ export default function ConditionReportModal({
 
               {/* Verification Status */}
 
-              {verification.status !==
-                'idle' &&
-                renderVerificationBadge()}
+              {selectedFile && (
+                <div style={{ marginTop: '1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    id="location-verified"
+                    checked={locationVerified}
+                    onChange={(e) => setLocationVerified(e.target.checked)}
+                    required
+                    style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                  <label htmlFor="location-verified" style={{ fontSize: '0.9rem', cursor: 'pointer' }}>
+                    I verify that this image was taken at this heritage site's location.
+                  </label>
+                </div>
+              )}
 
               {/* Description */}
 
@@ -1249,48 +736,30 @@ export default function ConditionReportModal({
                   type="submit"
                   className="btn-primary"
                   disabled={
-                    verification.status !==
-                    'verified'
+                    !locationVerified || !selectedFile
                   }
                   whileHover={
-                    verification.status ===
-                    'verified'
+                    locationVerified && selectedFile
                       ? {
                           scale: 1.02,
                         }
                       : {}
                   }
                   whileTap={
-                    verification.status ===
-                    'verified'
+                    locationVerified && selectedFile
                       ? {
                           scale: 0.98,
                         }
                       : {}
                   }
                 >
-                  {verification.status ===
-                  'verified' ? (
+                  {locationVerified ? (
                     <>
                       <ShieldCheck
                         size={16}
                       />
 
                       Submit Report
-                    </>
-                  ) : verification.status ===
-                      'reading-exif' ||
-                    verification.status ===
-                      'requesting-gps' ||
-                    verification.status ===
-                      'verifying' ? (
-                    <>
-                      <Loader2
-                        size={16}
-                        className="spin"
-                      />
-
-                      Verifying…
                     </>
                   ) : (
                     <>

@@ -204,8 +204,6 @@ export default function VerifierDashboard() {
               siteId: report.site_id,
               issueType: report.issue_type,
               photoUrl: report.photo_url,
-              exifCoords:
-                report.exif_coordinates,
               verified: report.verified,
               description: report.description,
             }));
@@ -932,12 +930,7 @@ export default function VerifierDashboard() {
                         Location verified
                       </p>
 
-                      <p className="verification-info-description">
-                        Coordinates:{' '}
-                        {selectedReport.exifCoords[1].toFixed(5)}
-                        ,{' '}
-                        {selectedReport.exifCoords[0].toFixed(5)}
-                      </p>
+
 
                       <p className="text-sm text-emerald-400 mt-2">
                         ✓ Report passed the location verification

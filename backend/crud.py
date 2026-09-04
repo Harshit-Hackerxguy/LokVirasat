@@ -109,8 +109,6 @@ def create_condition_report(
     db: Session,
     payload: schemas.ConditionReportCreate,
 ):
-    from geoalchemy2.shape import from_shape
-    from shapely.geometry import Point
     from models import ConditionReport, IssueType
 
     try:
@@ -125,13 +123,6 @@ def create_condition_report(
         site_id=payload.site_id,
         issue_type=issue_type,
         photo_url=payload.photo_url,
-        exif_location=from_shape(
-            Point(
-                payload.exif_longitude,
-                payload.exif_latitude,
-            ),
-            srid=4326,
-        ),
         verified=payload.verified,
         resolved=payload.resolved,
         description=payload.description,
@@ -142,6 +133,7 @@ def create_condition_report(
     db.refresh(report)
 
     return report
+
 
 
 def resolve_condition_report(

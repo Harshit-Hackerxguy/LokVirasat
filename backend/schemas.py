@@ -123,8 +123,6 @@ class ConditionReportCreate(BaseModel):
     site_id: str
     issue_type: str
     photo_url: str
-    exif_longitude: float = Field(..., ge=-180, le=180)
-    exif_latitude: float = Field(..., ge=-90, le=90)
     verified: bool = False
     resolved: bool = False
     description: str
@@ -135,28 +133,14 @@ class ConditionReportOut(BaseModel):
     site_id: str
     issue_type: str
     photo_url: str
-    exif_coordinates: list[float]   # [longitude, latitude]
     verified: bool
     resolved: bool
     description: str
     created_at: Optional[datetime] = None
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True}    
 
-    @model_validator(mode="before")
-    @classmethod
-    def extract_geometry(cls, data):
-        if hasattr(data, "__dict__"):
-            from geoalchemy2.shape import to_shape
 
-            if data.exif_location is not None:
-                point = to_shape(data.exif_location)
-                data.__dict__["exif_coordinates"] = [
-                    point.x,
-                    point.y,
-                ]
-
-        return data
 
 # ---------------------------------------------------------------------------
 # Heritage Documentation

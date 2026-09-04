@@ -300,7 +300,7 @@ class ConditionReport(Base):
 
     exif_location = Column(
         Geometry("POINT", srid=4326),
-        nullable=False,
+        nullable=True,
     )
 
     verified = Column(

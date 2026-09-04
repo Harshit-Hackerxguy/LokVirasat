@@ -3,6 +3,9 @@ Routes for Condition Reports.
 
 Endpoints:
 
+    POST /api/condition-reports/upload
+        Upload a condition-report photo to Cloudinary.
+
     POST /api/condition-reports/
         Submit a verified condition report.
 
@@ -10,17 +13,66 @@ Endpoints:
         List all condition reports.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    UploadFile,
+    File,
+)
+from cloudinary.uploader import upload
+from cloudinary_config import cloudinary
 from sqlalchemy.orm import Session
 
 import crud
 import schemas
 from database import get_db
 
+
 router = APIRouter(
     prefix="/api/condition-reports",
     tags=["Condition Reports"],
 )
+
+
+@router.post(
+    "/upload",
+)
+async def upload_condition_report_photo(
+    file: UploadFile = File(...),
+):
+    """
+    Upload condition-report photo to Cloudinary.
+    Returns the permanent Cloudinary URL.
+    """
+
+    if (
+        not file.content_type
+        or not file.content_type.startswith("image/")
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Only image files are allowed.",
+        )
+
+    try:
+        contents = await file.read()
+
+        result = upload(
+            contents,
+            folder="lokvirasat/condition-reports",
+            resource_type="image",
+        )
+
+        return {
+            "url": result["secure_url"],
+        }
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Image upload failed: {str(error)}",
+        )
 
 
 @router.post(
@@ -41,7 +93,9 @@ def create_condition_report(
 
     site = (
         db.query(HeritageSite)
-        .filter(HeritageSite.id == payload.site_id)
+        .filter(
+            HeritageSite.id == payload.site_id
+        )
         .first()
     )
 
@@ -56,7 +110,9 @@ def create_condition_report(
 
     existing = (
         db.query(ConditionReport)
-        .filter(ConditionReport.id == payload.id)
+        .filter(
+            ConditionReport.id == payload.id
+        )
         .first()
     )
 
@@ -93,9 +149,12 @@ def list_condition_reports(
 
     return (
         db.query(ConditionReport)
-        .order_by(ConditionReport.created_at.desc())
+        .order_by(
+            ConditionReport.created_at.desc()
+        )
         .all()
     )
+
 
 @router.patch(
     "/{report_id}",

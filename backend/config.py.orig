@@ -2,8 +2,6 @@
 Application settings loaded from environment variables / .env file.
 """
 
-from pathlib import Path
-
 from pydantic_settings import BaseSettings
 
 
@@ -13,16 +11,12 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     GEMINI_API_KEY: str = ""
 
-    CLOUDINARY_CLOUD_NAME: str
-    CLOUDINARY_API_KEY: str
-    CLOUDINARY_API_SECRET: str
-
     @property
     def origins_list(self) -> list[str]:
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",")]
 
     class Config:
-        env_file = Path(__file__).resolve().parent / ".env"
+        env_file = ".env"
         extra = "ignore"
 
 

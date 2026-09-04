@@ -518,99 +518,185 @@ export default function HeritagePage() {
       );
     };
 
-  const handleConditionReport =
-    async (
-      report: ConditionReport,
-      photoFile?: File
-    ) => {
-      try {
-        const response =
-          await fetch(
-            `${API_URL}/api/condition-reports/`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type':
-                  'application/json',
-              },
-              body: JSON.stringify({
-                id: report.id,
-                site_id:
-                  report.siteId,
-                issue_type:
-                  report.issueType,
-                photo_url:
-                  report.photoUrl,
-                exif_longitude:
-                  report.exifCoords[0],
-                exif_latitude:
-                  report.exifCoords[1],
-                verified:
-                  report.verified,
-                description:
-                  report.description,
-              }),
-            }
-          );
+  const handleConditionReport = async (
+  report: ConditionReport,
+  photoFile?: File
+) => {
+  try {
+    /*
+     * Step 1: Upload the actual image to Cloudinary
+     */
+    if (!photoFile) {
+      throw new Error(
+        'No condition-report photo was provided.'
+      );
+    }
 
-        if (!response.ok) {
-          throw new Error(
-            `Backend returned ${response.status}`
-          );
+    const uploadFormData = new FormData();
+
+    uploadFormData.append(
+      'file',
+      photoFile
+    );
+
+    const uploadResponse =
+      await fetch(
+        `${API_URL}/api/condition-reports/upload`,
+        {
+          method: 'POST',
+          body: uploadFormData,
         }
+      );
 
-        const savedReport =
+    if (!uploadResponse.ok) {
+      let errorMessage =
+        `Image upload failed (${uploadResponse.status})`;
+
+      try {
+        const errorData =
+          await uploadResponse.json();
+
+        if (errorData?.detail) {
+          errorMessage =
+            errorData.detail;
+        }
+      } catch {
+        // Keep default error message.
+      }
+
+      throw new Error(
+        errorMessage
+      );
+    }
+
+    const uploadResult =
+      await uploadResponse.json();
+
+    const cloudinaryUrl =
+      uploadResult.url;
+
+    if (!cloudinaryUrl) {
+      throw new Error(
+        'Cloudinary did not return an image URL.'
+      );
+    }
+
+    console.log(
+      'Condition report photo uploaded:',
+      cloudinaryUrl
+    );
+
+    /*
+     * Step 2: Create the condition report
+     * using the permanent Cloudinary URL.
+     */
+    const response =
+      await fetch(
+        `${API_URL}/api/condition-reports/`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify({
+            id: report.id,
+
+            site_id:
+              report.siteId,
+
+            issue_type:
+              report.issueType,
+
+            photo_url:
+              cloudinaryUrl,
+
+            verified:
+              report.verified,
+
+            description:
+              report.description,
+          }),
+        }
+      );
+
+    if (!response.ok) {
+      let errorMessage =
+        `Backend returned ${response.status}`;
+
+      try {
+        const errorData =
           await response.json();
 
-        console.log(
-          'Condition report submitted to backend:',
-          savedReport
-        );
-
-        alert(
-          'Condition report submitted successfully. It has been sent for review.'
-        );
-      } catch (error) {
-        console.error(
-          'Backend submission failed:',
-          error
-        );
-
-        try {
-          await savePendingAction({
-            type: 'condition-report',
-            payload: {
-              report,
-              photoFile: photoFile ?? null,
-            },
-          });
-
-          console.log(
-            'Condition report added to offline queue:',
-            {
-              report,
-              photoFile,
-            }
-          );
-
-          alert(
-            'You are offline. The condition report has been saved and will be synced when the connection is restored.'
-          );
-        } catch (
-          queueError
-        ) {
-          console.error(
-            'Failed to save condition report to offline queue:',
-            queueError
-          );
-
-          alert(
-            'Something went wrong while saving the condition report offline.'
-          );
+        if (errorData?.detail) {
+          errorMessage =
+            errorData.detail;
         }
+      } catch {
+        // Keep default error message.
       }
-    };
 
+      throw new Error(
+        errorMessage
+      );
+    }
+
+    const savedReport =
+      await response.json();
+
+    console.log(
+      'Condition report submitted to backend:',
+      savedReport
+    );
+
+    alert(
+      'Condition report submitted successfully. It has been sent for review.'
+    );
+
+  } catch (error) {
+    console.error(
+      'Backend submission failed:',
+      error
+    );
+
+    /*
+     * If anything fails, preserve the existing
+     * offline queue behavior.
+     */
+    try {
+      await savePendingAction({
+        type: 'condition-report',
+        payload: {
+          report,
+          photoFile:
+            photoFile ?? null,
+        },
+      });
+
+      console.log(
+        'Condition report added to offline queue:',
+        {
+          report,
+          photoFile,
+        }
+      );
+
+      alert(
+        'You are offline. The condition report has been saved and will be synced when the connection is restored.'
+      );
+
+    } catch (queueError) {
+      console.error(
+        'Failed to save condition report to offline queue:',
+        queueError
+      );
+
+      alert(
+        'Something went wrong while saving the condition report offline.'
+      );
+    }
+  }
+};
   return (
     <main
       className={

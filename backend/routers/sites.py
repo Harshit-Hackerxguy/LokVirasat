@@ -85,25 +85,26 @@ async def upload_image(
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=415, detail="Only JPEG, PNG, and WebP images are allowed")
 
-    # Stream to disk, checking size
-    site_dir = UPLOAD_ROOT / site_id
-    site_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        contents = await file.read()
+        
+        if len(contents) > MAX_SIZE_MB * 1024 * 1024:
+            raise HTTPException(status_code=413, detail=f"Image exceeds {MAX_SIZE_MB} MB limit")
 
-    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename else "jpg"
-    filename = f"{uuid.uuid4().hex}.{ext}"
-    dest = site_dir / filename
-
-    size = 0
-    with open(dest, "wb") as f:
-        while chunk := await file.read(1024 * 256):  # 256 KB chunks
-            size += len(chunk)
-            if size > MAX_SIZE_MB * 1024 * 1024:
-                f.close()
-                dest.unlink(missing_ok=True)
-                raise HTTPException(status_code=413, detail=f"Image exceeds {MAX_SIZE_MB} MB limit")
-            f.write(chunk)
-
-    # URL relative to static mount (/uploads/<site_id>/<filename>)
-    url = f"/uploads/{site_id}/{filename}"
-    image = crud.add_image_to_site(db, site_id=site_id, url=url, caption=caption)
-    return image
+        from cloudinary.uploader import upload
+        from cloudinary_config import cloudinary
+        
+        result = upload(
+            contents,
+            folder=f"lokvirasat/sites/{site_id}",
+            resource_type="image",
+        )
+        
+        url = result["secure_url"]
+        image = crud.add_image_to_site(db, site_id=site_id, url=url, caption=caption)
+        return image
+        
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Image upload failed: {str(error)}")
