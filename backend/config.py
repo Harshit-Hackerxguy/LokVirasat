@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/lokvirasat"
     ALLOWED_ORIGINS: str = "http://localhost:3000"
     UPLOAD_DIR: str = "uploads"
+    GEMINI_API_KEY: str = ""
 
     @property
     def origins_list(self) -> list[str]:

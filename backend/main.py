@@ -16,7 +16,7 @@ from sqlalchemy import text
 from config import settings
 from database import engine, Base
 import models
-from routers import sites, leads, condition_reports, documentation
+from routers import sites, leads, condition_reports, documentation, ai
 
 
 # Ensure PostGIS extension is created before tables are created
@@ -64,6 +64,7 @@ app.include_router(sites.router)
 app.include_router(leads.router)
 app.include_router(documentation.router)
 app.include_router(condition_reports.router)
+app.include_router(ai.router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

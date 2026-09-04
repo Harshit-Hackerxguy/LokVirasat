@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
+import AIChatBot from "@/components/chatbot/AIChatBot";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,6 +44,9 @@ export default function RootLayout({
           <main className="main-content">
             {children}
           </main>
+
+          {/* ── AI Chatbot (global floating widget) ── */}
+          <AIChatBot />
 
         </div>
       </body>
