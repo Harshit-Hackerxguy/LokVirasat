@@ -401,7 +401,7 @@ export default function AddHeritageModal() {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        className="fixed inset-0 z-2000 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         initial={{
           opacity: 0,
         }}
