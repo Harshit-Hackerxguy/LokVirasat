@@ -1,7 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+
+import {
+  saveOfflineHeritage,
+  getOfflineHeritage,
+  savePendingAction,
+} from '@/lib/offline/db';
 
 import {
   ArrowLeft,
@@ -17,7 +23,6 @@ import {
   X,
 } from 'lucide-react';
 
-import { HERITAGE_SITES } from '@/data/heritageSites';
 
 import {
   HeritageSite,
@@ -30,379 +35,649 @@ import ConditionReportModal from '@/components/forms/ConditionReportModal';
 
 import styles from './HeritagePage.module.css';
 
-const STORAGE_KEY =
-  'lokvirasat-heritage-leads';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:8000';
 
-const CONDITION_REPORTS_KEY =
-  'lokvirasat-condition-reports';
+interface ApiHeritageSite {
+  id: string;
+  name: string;
+  description: string;
+  category: HeritageSite['category'];
+
+  coordinates: [number, number];
+
+  zoom_level?: number;
+  pitch?: number;
+  bearing?: number;
+
+  verification_status?: string;
+  last_updated?: string;
+
+  images?: string[];
+}
+
+interface ApiHeritageLead {
+  id: string;
+  name: string;
+  description: string;
+  category: HeritageLead['category'];
+  approximate_location: [number, number];
+  village_or_area: string;
+  submitted_by: string;
+  submitted_at?: string | null;
+  status: HeritageLead['status'];
+  assigned_contributor?: string | null;
+}
+
+function normalizeApiSite(
+  data: ApiHeritageSite
+): HeritageSite {
+  let verificationStatus:
+    HeritageSite['verificationStatus'] =
+    'reported';
+
+  if (
+    data.verification_status ===
+    'authority-verified'
+  ) {
+    verificationStatus =
+      'authority-verified';
+  } else if (
+    data.verification_status ===
+    'community-verified'
+  ) {
+    verificationStatus =
+      'community-verified';
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    description: data.description,
+    category: data.category,
+    coordinates: data.coordinates,
+    zoomLevel: data.zoom_level ?? 15,
+    pitch: data.pitch ?? 45,
+    bearing: data.bearing ?? 0,
+    verificationStatus,
+    lastUpdated:
+      data.last_updated
+        ? data.last_updated.split('T')[0]
+        : new Date()
+            .toISOString()
+            .split('T')[0],
+    images: data.images ?? [],
+  };
+}
 
 export default function HeritagePage() {
   const router = useRouter();
   const params = useParams();
 
-  const id = params?.id as string;
-
-  /* ─────────────────────────────────────────────
-     UI STATE
-  ───────────────────────────────────────────── */
+  const id =
+    params?.id as string;
 
   const [storyOpen, setStoryOpen] =
     useState(false);
 
-  const [conditionReportOpen, setConditionReportOpen] =
-    useState(false);
+  const [
+    conditionReportOpen,
+    setConditionReportOpen,
+  ] = useState(false);
 
-  /* ─────────────────────────────────────────────
-     FIND HERITAGE SITE
-  ───────────────────────────────────────────── */
+  const [
+    isOfflineDownloaded,
+    setIsOfflineDownloaded,
+  ] = useState(false);
 
-  const site = useMemo<HeritageSite | null>(() => {
+  const [
+    isDownloading,
+    setIsDownloading,
+  ] = useState(false);
 
-    /*
-     * First check the normal/static heritage sites.
-     */
-    const normalSite = HERITAGE_SITES.find(
-      (item) => item.id === id
-    );
+  const [
+    site,
+    setSite,
+  ] = useState<HeritageSite | null>(null);
 
-    if (normalSite) {
-      return normalSite;
-    }
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
-    /*
-     * Verified community submissions are stored
-     * as HeritageLeads in localStorage.
-     */
-    try {
+  useEffect(() => {
+    if (!id) return;
 
-      const saved =
-        window.localStorage.getItem(
-          STORAGE_KEY
+    let cancelled = false;
+
+    async function loadHeritageSite() {
+      setIsLoading(true);
+      setSite(null);
+
+      try {
+        const response =
+          await fetch(
+            `${API_URL}/api/sites/`,
+            {
+              cache: 'no-store',
+            }
+          );
+
+        if (response.ok) {
+          const sites =
+            await response.json();
+
+          if (
+            Array.isArray(sites)
+          ) {
+            const apiSite =
+              sites.find(
+                (item: ApiHeritageSite) =>
+                  item.id === id
+              );
+
+            if (apiSite) {
+              const normalizedSite =
+                normalizeApiSite(
+                  apiSite
+                );
+
+              if (!cancelled) {
+                setSite(
+                  normalizedSite
+                );
+
+                setIsLoading(
+                  false
+                );
+              }
+
+              return;
+            }
+          }
+        }
+
+        console.warn(
+          'Heritage site was not found in API:',
+          id
         );
-
-      if (!saved) return null;
-
-      const parsed =
-        JSON.parse(saved) as HeritageLead[];
-
-      if (!Array.isArray(parsed)) {
-        return null;
+      } catch (error) {
+        console.warn(
+          'Could not load heritage site from API:',
+          error
+        );
       }
 
-      const lead = parsed.find(
-        (item) =>
-          item.status === 'verified' &&
-          `verified-${item.id}` === id
-      );
+      try {
+        const offlineSite =
+          await getOfflineHeritage(
+            id
+          );
 
-      if (!lead) {
-        return null;
+        if (
+          offlineSite &&
+          !cancelled
+        ) {
+          setSite(
+            offlineSite
+          );
+
+          setIsLoading(
+            false
+          );
+
+          return;
+        }
+      } catch (error) {
+        console.warn(
+          'Could not load offline heritage record:',
+          error
+        );
       }
 
-      /*
-       * Convert the complete verified lead
-       * into a HeritageSite.
-       *
-       * IMPORTANT:
-       * Preserve contributor documentation.
-       */
+      try {
+        const response =
+          await fetch(
+            `${API_URL}/api/leads/`,
+            {
+              cache: 'no-store',
+            }
+          );
 
-      return {
+        if (response.ok) {
+          const leads =
+            (await response.json()) as ApiHeritageLead[];
 
-        id: `verified-${lead.id}`,
+          if (
+            Array.isArray(leads)
+          ) {
+            const lead =
+              leads.find(
+                (item) =>
+                  item.status ===
+                    'verified' &&
+                  `verified-${item.id}` ===
+                    id
+              );
 
-        name: lead.name,
+            if (
+              lead &&
+              !cancelled
+            ) {
+              const communitySite:
+                HeritageSite = {
+                id:
+                  `verified-${lead.id}`,
 
-        /*
-         * Prefer GPS-verified coordinates.
-         */
-        coordinates:
-          lead.verifiedCoordinates ??
-          lead.approximateLocation,
+                name:
+                  lead.name,
 
-        description:
-          lead.description,
+                coordinates:
+                  lead.approximate_location,
 
-        category:
-          lead.category,
+                description:
+                  lead.description,
 
-        zoomLevel: 15,
+                category:
+                  lead.category,
 
-        pitch: 45,
+                zoomLevel:
+                  15,
 
-        bearing: 0,
+                pitch:
+                  45,
 
-        verificationStatus:
-          'community-verified',
+                bearing:
+                  0,
 
-        lastUpdated:
-          lead.documentedAt
-            ? lead.documentedAt.split('T')[0]
-            : new Date()
-                .toISOString()
-                .split('T')[0],
+                verificationStatus:
+                  'community-verified',
 
-        /*
-         * Preserve contributor photos.
-         */
-        images:
-          lead.photos ?? [],
+                lastUpdated:
+                  lead.submitted_at
+                    ? lead.submitted_at
+                        .split('T')[0]
+                    : new Date()
+                        .toISOString()
+                        .split('T')[0],
 
-        /*
-         * Preserve historical information.
-         */
-        historicalInformation:
-          lead.historicalInformation,
+                images:
+                  [],
+              };
 
-        /*
-         * Preserve location verification.
-         */
-        locationVerified:
-          lead.locationVerified,
+              setSite(
+                communitySite
+              );
 
-        verifiedCoordinates:
-          lead.verifiedCoordinates,
+              setIsLoading(
+                false
+              );
 
-        /*
-         * Preserve recorded local stories.
-         */
-        oralStories:
-          lead.oralStories ?? [],
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(
+          'Could not load community heritage lead from API:',
+          error
+        );
+      }
 
-        /*
-         * Preserve documentation metadata.
-         */
-        documentedAt:
-          lead.documentedAt,
-
-        documentedBy:
-          lead.documentedBy,
-      };
-
-    } catch (error) {
-
-      console.error(
-        'Failed to load heritage record:',
-        error
-      );
-
-      return null;
+      if (!cancelled) {
+        setSite(null);
+        setIsLoading(false);
+      }
     }
 
+    loadHeritageSite();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
-  /* ─────────────────────────────────────────────
-     NOT FOUND
-  ───────────────────────────────────────────── */
+  useEffect(() => {
+    if (!site) return;
+
+    const siteId =
+      site.id;
+
+    let cancelled = false;
+
+    async function checkOfflineStatus() {
+      try {
+        const offlineSite =
+          await getOfflineHeritage(
+            siteId
+          );
+
+        if (!cancelled) {
+          setIsOfflineDownloaded(
+            !!offlineSite
+          );
+        }
+      } catch (error) {
+        console.error(
+          'Failed to check offline status:',
+          error
+        );
+      }
+    }
+
+    checkOfflineStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [site]);
+
+  const handleDownloadOffline =
+    async () => {
+      if (
+        !site ||
+        isDownloading
+      ) {
+        return;
+      }
+
+      setIsDownloading(
+        true
+      );
+
+      try {
+        await saveOfflineHeritage(
+          site
+        );
+
+        setIsOfflineDownloaded(
+          true
+        );
+
+        alert(
+          'Heritage record downloaded for offline use.'
+        );
+      } catch (error) {
+        console.error(
+          'Failed to save heritage record offline:',
+          error
+        );
+
+        alert(
+          'Failed to save this heritage record offline.'
+        );
+      } finally {
+        setIsDownloading(
+          false
+        );
+      }
+    };
+
+  if (isLoading) {
+    return (
+      <main
+        className={
+          styles.page
+        }
+      >
+        <div
+          className={
+            styles.notFound
+          }
+        >
+          <h1>
+            Loading heritage record...
+          </h1>
+
+          <p>
+            Fetching the latest
+            heritage documentation.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   if (!site) {
-
     return (
-      <main className={styles.page}>
-
-        <div className={styles.notFound}>
-
+      <main
+        className={
+          styles.page
+        }
+      >
+        <div
+          className={
+            styles.notFound
+          }
+        >
           <h1>
             Heritage site not found
           </h1>
 
           <p>
-            This heritage record could not be found.
+            This heritage record
+            could not be found.
           </p>
 
           <button
-            className={styles.primaryButton}
+            className={
+              styles.primaryButton
+            }
             onClick={() =>
-              router.push('/map')
+              router.push(
+                '/map'
+              )
             }
           >
-
-            <ArrowLeft size={18} />
+            <ArrowLeft
+              size={18}
+            />
 
             Back to Map
-
           </button>
-
         </div>
-
       </main>
     );
   }
-
-  /* ─────────────────────────────────────────────
-     STATUS
-  ───────────────────────────────────────────── */
 
   const isCommunityVerified =
     site.verificationStatus ===
     'community-verified';
 
+  const isAuthorityVerified =
+    site.verificationStatus ===
+    'authority-verified';
+
   const statusLabel =
-    isCommunityVerified
-      ? 'Community Verified'
-      : 'Reported';
+    isAuthorityVerified
+      ? 'Authority Verified'
+      : isCommunityVerified
+        ? 'Community Verified'
+        : 'Reported';
 
-  /* ─────────────────────────────────────────────
-     MAP HANDLER
-  ───────────────────────────────────────────── */
+  const handleViewOnMap =
+    () => {
+      router.push(
+        `/map?site=${encodeURIComponent(
+          site.id
+        )}`
+      );
+    };
 
-  const handleViewOnMap = () => {
-
-    router.push(
-      `/map?site=${encodeURIComponent(site.id)}`
-    );
-
-  };
-
-  /* ─────────────────────────────────────────────
-     CONDITION REPORT
-  ───────────────────────────────────────────── */
-
-  const handleConditionReport = (
-    report: ConditionReport
-  ) => {
-
-    try {
-
-      /*
-       * Load existing condition reports.
-       */
-      const saved =
-        window.localStorage.getItem(
-          CONDITION_REPORTS_KEY
-        );
-
-      let existingReports: ConditionReport[] =
-        [];
-
-      if (saved) {
-
-        try {
-
-          const parsed =
-            JSON.parse(saved);
-
-          if (Array.isArray(parsed)) {
-            existingReports = parsed;
-          }
-
-        } catch (parseError) {
-
-          console.error(
-            'Failed to parse existing condition reports:',
-            parseError
+  const handleConditionReport =
+    async (
+      report: ConditionReport,
+      photoFile?: File
+    ) => {
+      try {
+        const response =
+          await fetch(
+            `${API_URL}/api/condition-reports/`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                id: report.id,
+                site_id:
+                  report.siteId,
+                issue_type:
+                  report.issueType,
+                photo_url:
+                  report.photoUrl,
+                exif_longitude:
+                  report.exifCoords[0],
+                exif_latitude:
+                  report.exifCoords[1],
+                verified:
+                  report.verified,
+                description:
+                  report.description,
+              }),
+            }
           );
 
+        if (!response.ok) {
+          throw new Error(
+            `Backend returned ${response.status}`
+          );
+        }
+
+        const savedReport =
+          await response.json();
+
+        console.log(
+          'Condition report submitted to backend:',
+          savedReport
+        );
+
+        alert(
+          'Condition report submitted successfully. It has been sent for review.'
+        );
+      } catch (error) {
+        console.error(
+          'Backend submission failed:',
+          error
+        );
+
+        try {
+          await savePendingAction({
+            type: 'condition-report',
+            payload: {
+              report,
+              photoFile: photoFile ?? null,
+            },
+          });
+
+          console.log(
+            'Condition report added to offline queue:',
+            {
+              report,
+              photoFile,
+            }
+          );
+
+          alert(
+            'You are offline. The condition report has been saved and will be synced when the connection is restored.'
+          );
+        } catch (
+          queueError
+        ) {
+          console.error(
+            'Failed to save condition report to offline queue:',
+            queueError
+          );
+
+          alert(
+            'Something went wrong while saving the condition report offline.'
+          );
         }
       }
-
-      /*
-       * Add the new report.
-       */
-      const updatedReports = [
-        ...existingReports,
-        report,
-      ];
-
-      /*
-       * Save it so the moderator dashboard
-       * can read it later.
-       */
-      window.localStorage.setItem(
-        CONDITION_REPORTS_KEY,
-        JSON.stringify(updatedReports)
-      );
-
-      console.log(
-        'Condition report submitted:',
-        report
-      );
-
-      alert(
-        'Condition report submitted successfully. It has been sent for review.'
-      );
-
-    } catch (error) {
-
-      console.error(
-        'Failed to save condition report:',
-        error
-      );
-
-      alert(
-        'Something went wrong while submitting the condition report.'
-      );
-
-    }
-  };
+    };
 
   return (
-
-    <main className={styles.page}>
-
-      {/* ═══════════════════════════════════════════
-          TOP BAR
-      ═══════════════════════════════════════════ */}
-
-      <header className={styles.topBar}>
-
+    <main
+      className={
+        styles.page
+      }
+    >
+      <header
+        className={
+          styles.topBar
+        }
+      >
         <button
-          className={styles.backButton}
+          className={
+            styles.backButton
+          }
           onClick={() =>
-            router.push('/map')
+            router.push(
+              '/map'
+            )
           }
         >
-
-          <ArrowLeft size={20} />
+          <ArrowLeft
+            size={20}
+          />
 
           <span>
             Back to Map
           </span>
-
         </button>
 
-        <div className={styles.brand}>
+        <div
+          className={
+            styles.brand
+          }
+        >
           Lok-Virasat
         </div>
-
       </header>
 
-      {/* ═══════════════════════════════════════════
-          CONTENT
-      ═══════════════════════════════════════════ */}
-
-      <div className={styles.container}>
-
-        {/* ═════════════════════════════════════════
-            HERO
-        ═════════════════════════════════════════ */}
-
-        <section className={styles.hero}>
-
-          {/* IMAGE / MEDIA */}
-
-          <div className={styles.heroMedia}>
-
+      <div
+        className={
+          styles.container
+        }
+      >
+        <section
+          className={
+            styles.hero
+          }
+        >
+          <div
+            className={
+              styles.heroMedia
+            }
+          >
             {site.images?.[0] ? (
-
               <img
-                src={site.images[0]}
-                alt={site.name}
-                className={styles.heroImage}
+                src={
+                  site.images[0]
+                }
+                alt={
+                  site.name
+                }
+                className={
+                  styles.heroImage
+                }
               />
-
             ) : (
-
-              <div className={styles.noImage}>
-
+              <div
+                className={
+                  styles.noImage
+                }
+              >
                 <div
                   className={
                     styles.noImageIcon
                   }
                 >
-
-                  <BookOpen size={42} />
-
+                  <BookOpen
+                    size={42}
+                  />
                 </div>
 
                 <span>
@@ -413,23 +688,20 @@ export default function HeritagePage() {
                   Community documentation
                   will appear here.
                 </small>
-
               </div>
-
             )}
-
           </div>
 
-          {/* HERO INFORMATION */}
-
-          <div className={styles.heroContent}>
-
+          <div
+            className={
+              styles.heroContent
+            }
+          >
             <div
               className={
                 styles.heroBadges
               }
             >
-
               <span
                 className={
                   styles.categoryBadge
@@ -440,18 +712,18 @@ export default function HeritagePage() {
 
               <span
                 className={
-                  isCommunityVerified
+                  isCommunityVerified ||
+                  isAuthorityVerified
                     ? styles.verifiedBadge
                     : styles.reportedBadge
                 }
               >
-
-                <ShieldCheck size={15} />
+                <ShieldCheck
+                  size={15}
+                />
 
                 {statusLabel}
-
               </span>
-
             </div>
 
             <h1
@@ -467,80 +739,68 @@ export default function HeritagePage() {
                 styles.heroMeta
               }
             >
-
               <span>
+                <MapPin
+                  size={17}
+                />
 
-                <MapPin size={17} />
-
-                {site.coordinates[1].toFixed(5)}
+                {site.coordinates[1].toFixed(
+                  5
+                )}
                 ° N,{' '}
 
-                {site.coordinates[0].toFixed(5)}
+                {site.coordinates[0].toFixed(
+                  5
+                )}
                 ° E
-
               </span>
 
               <span>
-
-                <Calendar size={17} />
+                <Calendar
+                  size={17}
+                />
 
                 Updated{' '}
+
                 {site.lastUpdated}
-
               </span>
-
             </div>
-
           </div>
-
         </section>
-
-        {/* ═════════════════════════════════════════
-            MAIN GRID
-        ═════════════════════════════════════════ */}
 
         <div
           className={
             styles.contentGrid
           }
         >
-
-          {/* ═══════════════════════════════════════
-              LEFT COLUMN
-          ═══════════════════════════════════════ */}
-
           <div
             className={
               styles.mainColumn
             }
           >
-
-            {/* ABOUT */}
-
             <section
-              className={styles.card}
+              className={
+                styles.card
+              }
             >
-
               <div
                 className={
                   styles.sectionHeader
                 }
               >
-
                 <div
                   className={
                     styles.sectionIcon
                   }
                 >
-
-                  <BookOpen size={23} />
-
+                  <BookOpen
+                    size={23}
+                  />
                 </div>
 
                 <h2>
                   About this Heritage
                 </h2>
-
               </div>
 
               <p
@@ -550,37 +810,32 @@ export default function HeritagePage() {
               >
                 {site.description}
               </p>
-
             </section>
 
-            {/* HISTORICAL / CULTURAL INFORMATION */}
-
             {site.historicalInformation && (
-
               <section
-                className={styles.card}
+                className={
+                  styles.card
+                }
               >
-
                 <div
                   className={
                     styles.sectionHeader
                   }
                 >
-
                   <div
                     className={
                       styles.sectionIcon
                     }
                   >
-
-                    <BookOpen size={23} />
-
+                    <BookOpen
+                      size={23}
+                    />
                   </div>
 
                   <h2>
                     Historical & Cultural Information
                   </h2>
-
                 </div>
 
                 <p
@@ -588,44 +843,40 @@ export default function HeritagePage() {
                     styles.sectionText
                   }
                 >
-                  {site.historicalInformation}
+                  {
+                    site.historicalInformation
+                  }
                 </p>
-
               </section>
-
             )}
 
-            {/* LOCAL STORIES */}
-
             <section
-              className={styles.card}
+              className={
+                styles.card
+              }
             >
-
               <div
                 className={
                   styles.sectionHeader
                 }
               >
-
                 <div
                   className={`${styles.sectionIcon} ${styles.purpleIcon}`}
                 >
-
-                  <Users size={23} />
-
+                  <Users
+                    size={23}
+                  />
                 </div>
 
                 <h2>
                   Local Stories
                 </h2>
-
               </div>
 
               {site.oralStories &&
-              site.oralStories.length > 0 ? (
-
+              site.oralStories.length >
+                0 ? (
                 <>
-
                   <p
                     className={
                       styles.sectionText
@@ -637,64 +888,53 @@ export default function HeritagePage() {
                   </p>
 
                   <div className="space-y-4">
-
                     {site.oralStories.map(
-                      (story, index) => (
-
+                      (
+                        story,
+                        index
+                      ) => (
                         <div
                           key={`${story.audioUrl}-${index}`}
                           className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50"
                         >
-
-                          <div
-                            className="flex items-center gap-3"
-                          >
-
+                          <div className="flex items-center gap-3">
                             <div
                               className={`${styles.sectionIcon} ${styles.purpleIcon}`}
                             >
-
-                              <Mic size={18} />
-
+                              <Mic
+                                size={18}
+                              />
                             </div>
 
                             <div>
-
-                              <h3
-                                className="font-semibold text-zinc-900 dark:text-white"
-                              >
+                              <h3 className="font-semibold text-zinc-900 dark:text-white">
                                 Local Oral History{' '}
-                                {index + 1}
+                                {index +
+                                  1}
                               </h3>
 
-                              <p
-                                className="text-sm text-zinc-500 dark:text-zinc-400"
-                              >
+                              <p className="text-sm text-zinc-500 dark:text-zinc-400">
                                 Language:{' '}
-                                {story.language}
+                                {
+                                  story.language
+                                }
                               </p>
-
                             </div>
-
                           </div>
 
                           <audio
                             controls
-                            src={story.audioUrl}
+                            src={
+                              story.audioUrl
+                            }
                             className="mt-4 w-full"
                           />
-
                         </div>
-
                       )
                     )}
-
                   </div>
-
                 </>
-
               ) : (
-
                 <p
                   className={
                     styles.sectionText
@@ -705,7 +945,6 @@ export default function HeritagePage() {
                   local knowledge associated with
                   this heritage site will appear here.
                 </p>
-
               )}
 
               <button
@@ -713,34 +952,32 @@ export default function HeritagePage() {
                   styles.outlineButton
                 }
                 onClick={() =>
-                  setStoryOpen(true)
+                  setStoryOpen(
+                    true
+                  )
                 }
               >
-
-                <Mic size={18} />
+                <Mic
+                  size={18}
+                />
 
                 Record a Local Story
-
               </button>
-
             </section>
 
-            {/* VERIFICATION JOURNEY */}
-
             <section
-              className={styles.card}
+              className={
+                styles.card
+              }
             >
-
               <div
                 className={
                   styles.sectionHeader
                 }
               >
-
                 <h2>
                   Verification Journey
                 </h2>
-
               </div>
 
               <p
@@ -757,13 +994,9 @@ export default function HeritagePage() {
                   styles.verificationJourney
                 }
               >
-
-                {/* STEP 1 */}
-
                 <div
                   className={`${styles.verificationStep} ${styles.completedStep}`}
                 >
-
                   <div
                     className={`${styles.stepCircle} ${styles.stepReported}`}
                   >
@@ -773,27 +1006,25 @@ export default function HeritagePage() {
                   <span>
                     Reported
                   </span>
-
                 </div>
 
                 <div
                   className={`${styles.stepLine} ${
-                    isCommunityVerified
+                    isCommunityVerified ||
+                    isAuthorityVerified
                       ? styles.completedLine
                       : ''
                   }`}
                 />
 
-                {/* STEP 2 */}
-
                 <div
                   className={`${styles.verificationStep} ${
-                    isCommunityVerified
+                    isCommunityVerified ||
+                    isAuthorityVerified
                       ? styles.completedStep
                       : ''
                   }`}
                 >
-
                   <div
                     className={`${styles.stepCircle} ${styles.stepCommunity}`}
                   >
@@ -803,21 +1034,23 @@ export default function HeritagePage() {
                   <span>
                     Community Verified
                   </span>
-
                 </div>
 
                 <div
-                  className={
-                    styles.stepLine
-                  }
+                  className={`${styles.stepLine} ${
+                    isAuthorityVerified
+                      ? styles.completedLine
+                      : ''
+                  }`}
                 />
 
-                {/* STEP 3 */}
-
                 <div
-                  className={`${styles.verificationStep} ${styles.futureStep}`}
+                  className={`${styles.verificationStep} ${
+                    isAuthorityVerified
+                      ? styles.completedStep
+                      : styles.futureStep
+                  }`}
                 >
-
                   <div
                     className={`${styles.stepCircle} ${styles.stepAuthority}`}
                   >
@@ -827,25 +1060,23 @@ export default function HeritagePage() {
                   <span>
                     Authority Verified
                   </span>
-
                 </div>
-
               </div>
-
             </section>
 
-            {/* AI */}
-
             <section
-              className={styles.aiCard}
+              className={
+                styles.aiCard
+              }
             >
-
               <div
-                className={styles.aiIcon}
+                className={
+                  styles.aiIcon
+                }
               >
-
-                <Sparkles size={25} />
-
+                <Sparkles
+                  size={25}
+                />
               </div>
 
               <div
@@ -853,7 +1084,6 @@ export default function HeritagePage() {
                   styles.aiContent
                 }
               >
-
                 <h2>
                   Explore with Lok-Virasat AI
                 </h2>
@@ -875,37 +1105,26 @@ export default function HeritagePage() {
                     );
                   }}
                 >
-
                   Ask about this heritage
 
                   <span>
                     →
                   </span>
-
                 </button>
-
               </div>
-
             </section>
-
           </div>
-
-          {/* ═══════════════════════════════════════
-              RIGHT COLUMN
-          ═══════════════════════════════════════ */}
 
           <aside
             className={
               styles.sideColumn
             }
           >
-
-            {/* LOCATION */}
-
             <section
-              className={styles.card}
+              className={
+                styles.card
+              }
             >
-
               <h3
                 className={
                   styles.sideTitle
@@ -919,7 +1138,6 @@ export default function HeritagePage() {
                   styles.locationBox
                 }
               >
-
                 <MapPin
                   size={21}
                   className={
@@ -928,25 +1146,28 @@ export default function HeritagePage() {
                 />
 
                 <div>
-
                   <strong>
                     Heritage Coordinates
                   </strong>
 
                   <p>
-
-                    {site.coordinates[1].toFixed(5)}
+                    {
+                      site.coordinates[1].toFixed(
+                        5
+                      )
+                    }
                     ° N
 
                     <br />
 
-                    {site.coordinates[0].toFixed(5)}
+                    {
+                      site.coordinates[0].toFixed(
+                        5
+                      )
+                    }
                     ° E
-
                   </p>
-
                 </div>
-
               </div>
 
               <button
@@ -957,21 +1178,19 @@ export default function HeritagePage() {
                   handleViewOnMap
                 }
               >
-
-                <MapPin size={17} />
+                <MapPin
+                  size={17}
+                />
 
                 View on Map
-
               </button>
-
             </section>
 
-            {/* DOCUMENTATION */}
-
             <section
-              className={styles.card}
+              className={
+                styles.card
+              }
             >
-
               <h3
                 className={
                   styles.sideTitle
@@ -985,9 +1204,7 @@ export default function HeritagePage() {
                   styles.documentationList
                 }
               >
-
                 <div>
-
                   <span>
                     Category
                   </span>
@@ -995,29 +1212,26 @@ export default function HeritagePage() {
                   <strong>
                     {site.category}
                   </strong>
-
                 </div>
 
                 <div>
-
                   <span>
                     Status
                   </span>
 
                   <strong
                     className={
-                      isCommunityVerified
+                      isCommunityVerified ||
+                      isAuthorityVerified
                         ? styles.blueValue
                         : styles.orangeValue
                     }
                   >
                     {statusLabel}
                   </strong>
-
                 </div>
 
                 <div>
-
                   <span>
                     Last Updated
                   </span>
@@ -1025,29 +1239,24 @@ export default function HeritagePage() {
                   <strong>
                     {site.lastUpdated}
                   </strong>
-
                 </div>
 
                 {site.documentedBy && (
-
                   <div>
-
                     <span>
                       Documented By
                     </span>
 
                     <strong>
-                      {site.documentedBy}
+                      {
+                        site.documentedBy
+                      }
                     </strong>
-
                   </div>
-
                 )}
 
                 {site.locationVerified && (
-
                   <div>
-
                     <span>
                       Location
                     </span>
@@ -1059,16 +1268,13 @@ export default function HeritagePage() {
                     >
                       GPS Verified
                     </strong>
-
                   </div>
-
                 )}
 
                 {site.oralStories &&
-                  site.oralStories.length > 0 && (
-
+                  site.oralStories.length >
+                    0 && (
                     <div>
-
                       <span>
                         Local Stories
                       </span>
@@ -1078,43 +1284,43 @@ export default function HeritagePage() {
                           styles.blueValue
                         }
                       >
-                        {site.oralStories.length}{' '}
+                        {
+                          site
+                            .oralStories
+                            .length
+                        }{' '}
                         recorded
                       </strong>
-
                     </div>
-
                   )}
-
               </div>
-
             </section>
-
-            {/* ACTIONS */}
 
             <div
               className={
                 styles.sideActions
               }
             >
-
               <button
                 className={
                   styles.downloadButton
                 }
-                onClick={() => {
-
-                  alert(
-                    'Offline download will be enabled with the offline heritage package.'
-                  );
-
-                }}
+                onClick={
+                  handleDownloadOffline
+                }
+                disabled={
+                  isDownloading
+                }
               >
+                <Download
+                  size={19}
+                />
 
-                <Download size={19} />
-
-                Download Offline
-
+                {isDownloading
+                  ? 'Downloading...'
+                  : isOfflineDownloaded
+                    ? 'Available Offline'
+                    : 'Download Offline'}
               </button>
 
               <button
@@ -1122,39 +1328,33 @@ export default function HeritagePage() {
                   styles.conditionButton
                 }
                 onClick={() =>
-                  setConditionReportOpen(true)
+                  setConditionReportOpen(
+                    true
+                  )
                 }
               >
-
-                <AlertTriangle size={18} />
+                <AlertTriangle
+                  size={18}
+                />
 
                 Report Condition
-
               </button>
-
             </div>
-
           </aside>
-
         </div>
-
       </div>
 
-      {/* ═══════════════════════════════════════════
-          STORY RECORDER MODAL
-      ═══════════════════════════════════════════ */}
-
       {storyOpen && (
-
         <div
           className={
             styles.modalBackdrop
           }
           onClick={() =>
-            setStoryOpen(false)
+            setStoryOpen(
+              false
+            )
           }
         >
-
           <div
             className={
               styles.storyModal
@@ -1163,51 +1363,43 @@ export default function HeritagePage() {
               e.stopPropagation()
             }
           >
-
             <button
               className={
                 styles.modalClose
               }
               onClick={() =>
-                setStoryOpen(false)
+                setStoryOpen(
+                  false
+                )
               }
               aria-label="Close"
             >
-
-              <X size={20} />
-
+              <X
+                size={20}
+              />
             </button>
 
             <StoryRecorder />
-
           </div>
-
         </div>
-
       )}
 
-      {/* ═══════════════════════════════════════════
-          CONDITION REPORT
-      ═══════════════════════════════════════════ */}
-
       <ConditionReportModal
-
         isOpen={
           conditionReportOpen
         }
-
         onClose={() =>
-          setConditionReportOpen(false)
+          setConditionReportOpen(
+            false
+          )
         }
-
-        siteId={site.id}
-
+        siteId={
+          site.id
+        }
         onSubmit={
           handleConditionReport
         }
-
       />
-
     </main>
   );
 }

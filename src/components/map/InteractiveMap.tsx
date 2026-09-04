@@ -5,10 +5,6 @@ import { Plus } from 'lucide-react';
 import { useMapStore } from '@/store/useMapStore';
 import AddHeritageModal from '@/components/forms/AddHeritageModal';
 
-import { HERITAGE_SITES } from '@/data/heritageSites';
-import { HERITAGE_LEADS } from '@/data/heritageLeads';
-
-
 import {
   HeritageSite,
   HeritageLead,

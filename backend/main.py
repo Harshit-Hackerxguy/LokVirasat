@@ -6,17 +6,22 @@ FastAPI application entry point.
 """
 
 from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .database import engine, Base
-from .routers import sites, leads
+from . import models
+from .routers import sites, leads, condition_reports, documentation
 
-# Create all tables (idempotent – uses IF NOT EXISTS under the hood)
-# In production you would use Alembic migrations instead.
+
+# Create all tables
+# Includes heritage_sites, heritage_leads, site_images,
+# and condition_reports from the SQLAlchemy models.
 Base.metadata.create_all(bind=engine)
+
 
 app = FastAPI(
     title="LokVirasat API",
@@ -24,7 +29,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
+
 # ── CORS ──────────────────────────────────────────────────────────────────────
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins_list,
@@ -33,16 +40,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ── Static file serving for uploaded images ───────────────────────────────────
+
 uploads_path = Path(settings.UPLOAD_DIR)
 uploads_path.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=str(uploads_path)),
+    name="uploads",
+)
+
 
 # ── Routers ───────────────────────────────────────────────────────────────────
+
 app.include_router(sites.router)
 app.include_router(leads.router)
 
 
+# ── Health check ──────────────────────────────────────────────────────────────
+
 @app.get("/health", tags=["Health"])
 def health():
     return {"status": "ok"}
+
+app.include_router(sites.router)
+app.include_router(leads.router)
+app.include_router(documentation.router)
+app.include_router(condition_reports.router)

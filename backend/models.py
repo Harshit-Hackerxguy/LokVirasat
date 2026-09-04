@@ -16,12 +16,13 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Float,
+    Boolean,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from geoalchemy2 import Geometry
 import enum
-
+from datetime import datetime
 from .database import Base
 
 
@@ -125,3 +126,128 @@ class HeritageLead(Base):
 
     status = Column(SAEnum(LeadStatus), default=LeadStatus.needs_documentation, nullable=False)
     assigned_contributor = Column(String(255), nullable=True)
+
+class DocumentationStatus(str, enum.Enum):
+    draft = "draft"
+    submitted = "submitted"
+    under_review = "under_review"
+    verified = "verified"
+    rejected = "rejected"
+
+
+class HeritageDocumentation(Base):
+    __tablename__ = "heritage_documentation"
+
+    id = Column(
+        String,
+        primary_key=True,
+        index=True
+    )
+
+    lead_id = Column(
+        String,
+        ForeignKey("heritage_leads.id"),
+        nullable=False
+    )
+
+    contributor_id = Column(
+        String,
+        nullable=False
+    )
+
+    historical_information = Column(
+        Text,
+        nullable=False
+    )
+
+    cultural_significance = Column(
+        Text,
+        nullable=False
+    )
+
+    sources = Column(
+        Text,
+        nullable=True
+    )
+
+    latitude = Column(
+        Float,
+        nullable=False
+    )
+
+    longitude = Column(
+        Float,
+        nullable=False
+    )
+
+    status = Column(
+        SAEnum(DocumentationStatus),
+        default=DocumentationStatus.submitted
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+
+# ---------------------------------------------------------------------------
+# Condition Reports  (verified field reports from contributors)
+# ---------------------------------------------------------------------------
+
+class IssueType(str, enum.Enum):
+    Damage = "Damage"
+    Cleanliness = "Cleanliness"
+    Infrastructure = "Infrastructure"
+    Accessibility = "Accessibility"
+
+
+class ConditionReport(Base):
+    __tablename__ = "condition_reports"
+
+    id = Column(String, primary_key=True, index=True)
+
+    site_id = Column(
+        String,
+        ForeignKey("heritage_sites.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    issue_type = Column(
+        SAEnum(IssueType),
+        nullable=False,
+    )
+
+    photo_url = Column(String(512), nullable=False)
+
+    exif_location = Column(
+        Geometry("POINT", srid=4326),
+        nullable=False,
+    )
+
+    verified = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+
+    resolved = Column(
+    Boolean,
+    nullable=False,
+    default=False,
+    )
+
+    description = Column(Text, nullable=False)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )

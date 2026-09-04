@@ -14,10 +14,10 @@ import {
 } from 'lucide-react';
 
 import { ConditionReport, HeritageLead } from '@/types';
-import { HERITAGE_LEADS } from '@/data/heritageLeads';
 
-const STORAGE_KEY = 'lokvirasat-heritage-leads';
-const CONDITION_REPORTS_KEY = 'lokvirasat-condition-reports';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:8000';
 
 type Filter =
   | 'all'
@@ -25,6 +25,39 @@ type Filter =
   | 'claimed'
   | 'documented'
   | 'verified';
+
+interface ApiHeritageLead {
+  id: string;
+  name: string;
+  description: string;
+  category: HeritageLead['category'];
+  approximate_location: [number, number];
+  village_or_area: string;
+  submitted_by: string;
+  submitted_at?: string | null;
+  status: HeritageLead['status'];
+  assigned_contributor?: string | null;
+}
+
+function mapApiLeadToFrontend(
+  lead: ApiHeritageLead
+): HeritageLead {
+  return {
+    id: lead.id,
+    name: lead.name,
+    description: lead.description,
+    category: lead.category,
+    approximateLocation: lead.approximate_location,
+    villageOrArea: lead.village_or_area,
+    submittedBy: lead.submitted_by,
+    submittedAt:
+      lead.submitted_at ||
+      new Date().toISOString(),
+    status: lead.status,
+    assignedContributor:
+      lead.assigned_contributor || undefined,
+  };
+}
 
 function StatusBadge({
   status,
@@ -89,83 +122,114 @@ export default function VerifierDashboard() {
   const [selectedReport, setSelectedReport] =
     useState<ConditionReport | null>(null);
 
-  /* LOAD SHARED CONTRIBUTOR DATA */
-
   useEffect(() => {
-    try {
-      const saved =
-        window.localStorage.getItem(
-          STORAGE_KEY
+    let cancelled = false;
+
+    async function loadLeads() {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/leads/`,
+          {
+            cache: 'no-store',
+          }
         );
 
-      if (saved) {
-        const parsed =
-          JSON.parse(saved) as HeritageLead[];
-
-        if (Array.isArray(parsed)) {
-          setLeads(parsed);
-        } else {
-          setLeads(HERITAGE_LEADS);
+        if (!response.ok) {
+          throw new Error(
+            `Backend returned ${response.status}`
+          );
         }
-      } else {
-        setLeads(HERITAGE_LEADS);
-      }
-    } catch (error) {
-      console.error(
-        'Failed to load verification data:',
-        error
-      );
 
-      setLeads(HERITAGE_LEADS);
-    } finally {
-      setLoaded(true);
-    }
-  }, []);
+        const data =
+          (await response.json()) as ApiHeritageLead[];
 
-  /* LOAD CONDITION REPORTS */
+        if (!Array.isArray(data)) {
+          throw new Error(
+            'Invalid heritage leads response'
+          );
+        }
 
-  useEffect(() => {
-    try {
-      const saved =
-        window.localStorage.getItem(
-          CONDITION_REPORTS_KEY
+        if (!cancelled) {
+          setLeads(
+            data.map(mapApiLeadToFrontend)
+          );
+        }
+      } catch (error) {
+        console.error(
+          'Failed to load heritage leads from backend:',
+          error
         );
 
-      if (saved) {
-        const parsed =
-          JSON.parse(saved) as ConditionReport[];
-
-        if (Array.isArray(parsed)) {
-          setConditionReports(parsed);
+        if (!cancelled) {
+          setLeads([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoaded(true);
         }
       }
-    } catch (error) {
-      console.error(
-        'Failed to load condition reports:',
-        error
-      );
     }
+
+    loadLeads();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  /* SAVE SHARED DATA */
-
   useEffect(() => {
-    if (!loaded) return;
+    let cancelled = false;
 
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(leads)
-      );
-    } catch (error) {
-      console.error(
-        'Failed to save verification data:',
-        error
-      );
+    async function loadConditionReports() {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/condition-reports/`,
+          {
+            cache: 'no-store',
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Backend returned ${response.status}`
+          );
+        }
+
+        const data = await response.json();
+
+        if (!cancelled && Array.isArray(data)) {
+          const reports: ConditionReport[] =
+            data.map((report) => ({
+              id: report.id,
+              siteId: report.site_id,
+              issueType: report.issue_type,
+              photoUrl: report.photo_url,
+              exifCoords:
+                report.exif_coordinates,
+              verified: report.verified,
+              description: report.description,
+            }));
+
+          setConditionReports(reports);
+        }
+      } catch (error) {
+        console.error(
+          'Failed to load condition reports from backend:',
+          error
+        );
+
+        if (!cancelled) {
+          setConditionReports([]);
+        }
+      }
     }
-  }, [leads, loaded]);
 
-  /* FILTER */
+    loadConditionReports();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredLeads = useMemo(() => {
     if (filter === 'all') {
@@ -176,8 +240,6 @@ export default function VerifierDashboard() {
       (lead) => lead.status === filter
     );
   }, [leads, filter]);
-
-  /* COUNTS */
 
   const pendingCount = leads.filter(
     (lead) => lead.status === 'documented'
@@ -191,53 +253,116 @@ export default function VerifierDashboard() {
     (lead) => lead.status === 'claimed'
   ).length;
 
-  /* APPROVE */
-
-  const approveLead = (
-    lead: HeritageLead
+  const updateLeadStatus = async (
+    lead: HeritageLead,
+    status: HeritageLead['status']
   ) => {
-    const updated: HeritageLead = {
-      ...lead,
-      status: 'verified',
-    };
-
-    setLeads((current) =>
-      current.map((item) =>
-        item.id === lead.id
-          ? updated
-          : item
-      )
+    const response = await fetch(
+      `${API_URL}/api/leads/${lead.id}/status`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status,
+          assigned_contributor:
+            lead.assignedContributor || null,
+        }),
+      }
     );
 
-    setSelectedLead(null);
-    setRejecting(false);
-    setRejectionReason('');
+    if (!response.ok) {
+      let detail = `Backend returned ${response.status}`;
+
+      try {
+        const data = await response.json();
+
+        if (typeof data?.detail === 'string') {
+          detail = data.detail;
+        }
+      } catch {
+        // Keep the default error message.
+      }
+
+      throw new Error(detail);
+    }
+
+    const data =
+      (await response.json()) as ApiHeritageLead;
+
+    return mapApiLeadToFrontend(data);
   };
 
-  /* REJECT */
-
-  const rejectLead = (
+  const approveLead = async (
     lead: HeritageLead
   ) => {
-    const updated: HeritageLead = {
-      ...lead,
-      status: 'claimed',
-    };
+    try {
+      const updated =
+        await updateLeadStatus(
+          lead,
+          'verified'
+        );
 
-    setLeads((current) =>
-      current.map((item) =>
-        item.id === lead.id
-          ? updated
-          : item
-      )
-    );
+      setLeads((current) =>
+        current.map((item) =>
+          item.id === updated.id
+            ? updated
+            : item
+        )
+      );
 
-    setSelectedLead(null);
-    setRejecting(false);
-    setRejectionReason('');
+      setSelectedLead(null);
+      setRejecting(false);
+      setRejectionReason('');
+    } catch (error) {
+      console.error(
+        'Failed to verify heritage lead:',
+        error
+      );
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Could not verify the submission. Please try again.'
+      );
+    }
   };
 
-  /* OPEN REVIEW */
+  const rejectLead = async (
+    lead: HeritageLead
+  ) => {
+    try {
+      const updated =
+        await updateLeadStatus(
+          lead,
+          'claimed'
+        );
+
+      setLeads((current) =>
+        current.map((item) =>
+          item.id === updated.id
+            ? updated
+            : item
+        )
+      );
+
+      setSelectedLead(null);
+      setRejecting(false);
+      setRejectionReason('');
+    } catch (error) {
+      console.error(
+        'Failed to reject heritage lead:',
+        error
+      );
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Could not reject the submission. Please try again.'
+      );
+    }
+  };
 
   const openReview = (
     lead: HeritageLead
@@ -247,38 +372,44 @@ export default function VerifierDashboard() {
     setRejectionReason('');
   };
 
-  /* CLOSE / RESOLVE CONDITION REPORT */
-
-  const closeConditionReport = (
+  const closeConditionReport = async (
     reportId: string
   ) => {
-    setConditionReports((current) => {
-      const updated = current.filter(
-        (report) => report.id !== reportId
+    try {
+      const response = await fetch(
+        `${API_URL}/api/condition-reports/${reportId}?resolved=true`,
+        {
+          method: 'PATCH',
+        }
       );
 
-      try {
-        window.localStorage.setItem(
-          CONDITION_REPORTS_KEY,
-          JSON.stringify(updated)
-        );
-      } catch (error) {
-        console.error(
-          'Failed to save condition report changes:',
-          error
+      if (!response.ok) {
+        throw new Error(
+          `Backend returned ${response.status}`
         );
       }
 
-      return updated;
-    });
+      setConditionReports((current) =>
+        current.filter(
+          (report) => report.id !== reportId
+        )
+      );
 
-    setSelectedReport(null);
+      setSelectedReport(null);
+    } catch (error) {
+      console.error(
+        'Failed to resolve condition report:',
+        error
+      );
+
+      alert(
+        'Could not update the condition report. Please try again.'
+      );
+    }
   };
 
   return (
     <main className="verification-page">
-
-      {/* HEADER */}
 
       <section className="verification-header">
 
@@ -328,11 +459,7 @@ export default function VerifierDashboard() {
 
       </section>
 
-      {/* CONTENT */}
-
       <div className="verification-content">
-
-        {/* STATS */}
 
         <div className="verification-stats">
 
@@ -398,8 +525,6 @@ export default function VerifierDashboard() {
 
         </div>
 
-        {/* FILTERS */}
-
         <div className="verification-filters">
 
           {(
@@ -438,8 +563,6 @@ export default function VerifierDashboard() {
           )}
 
         </div>
-
-        {/* CONDITION REPORTS */}
 
         {conditionReports.length > 0 && (
 
@@ -542,8 +665,6 @@ export default function VerifierDashboard() {
           </section>
 
         )}
-
-        {/* SUBMISSIONS */}
 
         <div className="verification-submissions">
 
@@ -704,10 +825,6 @@ export default function VerifierDashboard() {
 
       </div>
 
-      {/* =====================================================
-          CONDITION REPORT REVIEW MODAL
-      ===================================================== */}
-
       {selectedReport && (
 
         <div className="verification-modal-overlay">
@@ -735,7 +852,9 @@ export default function VerifierDashboard() {
 
               <button
                 type="button"
-                onClick={() => setSelectedReport(null)}
+                onClick={() =>
+                  setSelectedReport(null)
+                }
                 className="verification-modal-close"
                 aria-label="Close condition report"
               >
@@ -866,7 +985,9 @@ export default function VerifierDashboard() {
               <button
                 type="button"
                 onClick={() =>
-                  closeConditionReport(selectedReport.id)
+                  closeConditionReport(
+                    selectedReport.id
+                  )
                 }
                 className="verification-footer-button verification-footer-reject"
               >
@@ -877,7 +998,9 @@ export default function VerifierDashboard() {
               <button
                 type="button"
                 onClick={() =>
-                  closeConditionReport(selectedReport.id)
+                  closeConditionReport(
+                    selectedReport.id
+                  )
                 }
                 className="verification-footer-button verification-footer-approve"
               >
@@ -893,17 +1016,11 @@ export default function VerifierDashboard() {
 
       )}
 
-      {/* =====================================================
-          REVIEW MODAL
-      ===================================================== */}
-
       {selectedLead && (
 
         <div className="verification-modal-overlay">
 
           <div className="verification-modal">
-
-            {/* HEADER */}
 
             <div className="verification-modal-header">
 
@@ -939,11 +1056,7 @@ export default function VerifierDashboard() {
 
             </div>
 
-            {/* BODY */}
-
             <div className="verification-modal-body">
-
-              {/* HERITAGE INFORMATION */}
 
               <section className="verification-modal-section">
 
@@ -996,8 +1109,6 @@ export default function VerifierDashboard() {
                 </div>
 
               </section>
-
-              {/* LOCATION */}
 
               <section className="verification-modal-section">
 
@@ -1065,8 +1176,6 @@ export default function VerifierDashboard() {
 
               </section>
 
-              {/* CONTRIBUTION DETAILS */}
-
               <section className="verification-modal-section">
 
                 <h3 className="verification-section-title">
@@ -1118,10 +1227,6 @@ export default function VerifierDashboard() {
 
               </section>
 
-              {/* =================================================
-                  PHOTOS / EVIDENCE
-              ================================================= */}
-
               {selectedLead.photos &&
                 selectedLead.photos.length > 0 && (
 
@@ -1167,10 +1272,6 @@ export default function VerifierDashboard() {
                   </section>
 
                 )}
-
-              {/* =================================================
-                  LOCAL STORIES
-              ================================================= */}
 
               {selectedLead.oralStories &&
                 selectedLead.oralStories.length > 0 && (
@@ -1242,8 +1343,6 @@ export default function VerifierDashboard() {
 
                 )}
 
-              {/* CURRENT STATE */}
-
               <section className="verification-modal-section">
 
                 <div className="verification-pending-box">
@@ -1267,8 +1366,6 @@ export default function VerifierDashboard() {
                 </div>
 
               </section>
-
-              {/* REJECTION */}
 
               {rejecting && (
 
@@ -1295,8 +1392,6 @@ export default function VerifierDashboard() {
               )}
 
             </div>
-
-            {/* FOOTER */}
 
             <div className="verification-modal-footer">
 

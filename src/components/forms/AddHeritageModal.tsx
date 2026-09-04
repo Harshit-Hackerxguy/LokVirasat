@@ -32,11 +32,7 @@ import {
 
 import {
   HeritageCategory,
-  HeritageLead,
 } from '@/types';
-
-const STORAGE_KEY =
-  'lokvirasat-heritage-leads';
 
 export default function AddHeritageModal() {
   const isModalOpen = useMapStore(
@@ -83,10 +79,6 @@ export default function AddHeritageModal() {
     },
   });
 
-  // =========================================================
-  // SET LOCATION
-  // =========================================================
-
   useEffect(() => {
     if (draftLocation) {
       setValue(
@@ -102,10 +94,6 @@ export default function AddHeritageModal() {
     setValue,
   ]);
 
-  // =========================================================
-  // CLEAN IMAGE PREVIEWS
-  // =========================================================
-
   useEffect(() => {
     return () => {
       previewUrls.forEach((url) =>
@@ -113,10 +101,6 @@ export default function AddHeritageModal() {
       );
     };
   }, [previewUrls]);
-
-  // =========================================================
-  // LIVE LOCATION
-  // =========================================================
 
   const handleUseLiveLocation = () => {
     setIsLocating(true);
@@ -174,18 +158,10 @@ export default function AddHeritageModal() {
     );
   };
 
-  // =========================================================
-  // PICK LOCATION ON MAP
-  // =========================================================
-
   const handlePickOnMap = () => {
     setModalOpen(false);
     setPinningMode(true);
   };
-
-  // =========================================================
-  // IMAGE HANDLING
-  // =========================================================
 
   const handleImageDrop = useCallback(
     (
@@ -292,18 +268,10 @@ export default function AddHeritageModal() {
     setPreviewUrls(updatedUrls);
   };
 
-  // =========================================================
-  // SUBMIT CONTRIBUTION
-  // =========================================================
-
   const onSubmit = async (
     data: HeritageFormValues
   ) => {
     try {
-      // -------------------------------------------------------
-      // Make sure we actually have a location
-      // -------------------------------------------------------
-
       if (!data.coordinates) {
         alert(
           'Please select a location before submitting.'
@@ -312,11 +280,11 @@ export default function AddHeritageModal() {
         return;
       }
 
-      // -------------------------------------------------------
-      // Create a new Heritage Lead
-      // -------------------------------------------------------
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL ||
+        'http://localhost:8000';
 
-      const newLead: HeritageLead = {
+      const payload = {
         id: `lead-community-${Date.now()}`,
 
         name: data.name,
@@ -327,102 +295,67 @@ export default function AddHeritageModal() {
         description:
           data.description,
 
-        villageOrArea:
+        longitude:
+          data.coordinates[0],
+
+        latitude:
+          data.coordinates[1],
+
+        village_or_area:
           'Community Reported Location',
 
-        submittedBy:
+        submitted_by:
           'Local Community',
 
-        submittedAt:
-          new Date()
-            .toISOString()
-            .split('T')[0],
-
-        // This is what makes it appear
-        // under Contributor → Available.
         status:
           'needs-documentation',
 
-        assignedContributor:
-          undefined,
-
-        approximateLocation:
-          data.coordinates,
+        assigned_contributor:
+          null,
       };
 
-      // -------------------------------------------------------
-      // Read existing contributor leads
-      // -------------------------------------------------------
-
-      const existingData =
-        window.localStorage.getItem(
-          STORAGE_KEY
-        );
-
-      let existingLeads: HeritageLead[] =
-        [];
-
-      if (existingData) {
-        try {
-          const parsed =
-            JSON.parse(
-              existingData
-            );
-
-          if (
-            Array.isArray(parsed)
-          ) {
-            existingLeads =
-              parsed;
-          }
-        } catch (error) {
-          console.error(
-            'Could not parse stored heritage leads:',
-            error
-          );
-
-          existingLeads = [];
+      const response = await fetch(
+        `${API_URL}/api/leads/`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify(
+            payload
+          ),
         }
-      }
-
-      // -------------------------------------------------------
-      // Add the new lead
-      // -------------------------------------------------------
-
-      const updatedLeads = [
-        ...existingLeads,
-        newLead,
-      ];
-
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(
-          updatedLeads
-        )
       );
 
-      // -------------------------------------------------------
-      // Verify storage immediately
-      // -------------------------------------------------------
+      if (!response.ok) {
+        let errorMessage =
+          `Backend returned ${response.status}`;
 
-      const savedData =
-        window.localStorage.getItem(
-          STORAGE_KEY
+        try {
+          const errorData =
+            await response.json();
+
+          if (errorData?.detail) {
+            errorMessage =
+              errorData.detail;
+          }
+        } catch {
+          // Keep the default error message.
+        }
+
+        throw new Error(
+          errorMessage
         );
+      }
+
+      const createdLead =
+        await response.json();
 
       console.log(
         'Heritage lead created:',
-        newLead
+        createdLead
       );
-
-      console.log(
-        'Saved contributor leads:',
-        savedData
-      );
-
-      // -------------------------------------------------------
-      // Small submission delay
-      // -------------------------------------------------------
 
       await new Promise(
         (resolve) =>
@@ -432,27 +365,15 @@ export default function AddHeritageModal() {
           )
       );
 
-      // -------------------------------------------------------
-      // Reset form
-      // -------------------------------------------------------
-
       reset();
 
       setImageFiles([]);
 
       setPreviewUrls([]);
 
-      // -------------------------------------------------------
-      // Clear map draft location
-      // -------------------------------------------------------
-
       useMapStore
         .getState()
         .setDraftLocation(null);
-
-      // -------------------------------------------------------
-      // Close modal
-      // -------------------------------------------------------
 
       setModalOpen(false);
 
@@ -467,14 +388,10 @@ export default function AddHeritageModal() {
       );
 
       alert(
-        'Something went wrong while submitting the heritage site.'
+        'Something went wrong while submitting the heritage site. Please try again.'
       );
     }
   };
-
-  // =========================================================
-  // MODAL
-  // =========================================================
 
   if (!isModalOpen) {
     return null;
@@ -518,10 +435,6 @@ export default function AddHeritageModal() {
           }}
         >
 
-          {/* =================================================
-              HEADER
-          ================================================= */}
-
           <div className="flex shrink-0 items-center justify-between border-b border-gray-100 bg-gray-50/50 p-6">
 
             <div>
@@ -548,10 +461,6 @@ export default function AddHeritageModal() {
 
           </div>
 
-          {/* =================================================
-              BODY
-          ================================================= */}
-
           <div className="custom-scrollbar overflow-y-auto p-6">
 
             <form
@@ -560,10 +469,6 @@ export default function AddHeritageModal() {
               )}
               className="space-y-6"
             >
-
-              {/* =================================================
-                  LOCATION
-              ================================================= */}
 
               <div className="space-y-3">
 
@@ -661,6 +566,7 @@ export default function AddHeritageModal() {
                     </button>
 
                   </div>
+
                 )}
 
                 {errors.coordinates && (
@@ -674,10 +580,6 @@ export default function AddHeritageModal() {
                 )}
 
               </div>
-
-              {/* =================================================
-                  SITE DETAILS
-              ================================================= */}
 
               <div className="space-y-4">
 
@@ -785,10 +687,6 @@ export default function AddHeritageModal() {
 
               </div>
 
-              {/* =================================================
-                  PHOTOS
-              ================================================= */}
-
               <div>
 
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
@@ -880,10 +778,6 @@ export default function AddHeritageModal() {
                 )}
 
               </div>
-
-              {/* =================================================
-                  SUBMIT
-              ================================================= */}
 
               <div className="border-t border-gray-100 pt-4">
 

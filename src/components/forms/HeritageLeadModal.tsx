@@ -29,7 +29,16 @@ import './HeritageLeadModal.css';
 interface HeritageLeadModalProps {
   lead: HeritageLead | null;
   onClose: () => void;
-  onSubmit: (lead: HeritageLead) => void;
+  onSubmit: (
+    lead: HeritageLead,
+    documentation: {
+      historical_information: string;
+      cultural_significance: string;
+      sources?: string;
+      latitude: number;
+      longitude: number;
+    }
+  ) => void;
 }
 
 const LOCATION_TOLERANCE_METERS = 500;
@@ -83,7 +92,8 @@ export default function HeritageLeadModal({
   const [category, setCategory] =
     useState<HeritageCategory | ''>('');
   const [history, setHistory] = useState('');
-
+  const [culturalSignificance, setCulturalSignificance] = useState('');
+  const [sources, setSources] = useState('');
   // =========================================================
   // DRAFT STATE
   // =========================================================
@@ -180,6 +190,16 @@ export default function HeritageLeadModal({
             ''
         );
 
+        setCulturalSignificance(
+          draft.culturalSignificance ??
+            ''
+        );
+
+        setSources(
+          draft.sources ??
+            ''
+        );
+
         setLocationVerified(
           draft.locationVerified ??
             lead.locationVerified ??
@@ -218,6 +238,9 @@ export default function HeritageLeadModal({
         setHistory(
           lead.historicalInformation ?? ''
         );
+
+        setCulturalSignificance('');
+        setSources('');
 
         setLocationVerified(
           lead.locationVerified ?? false
@@ -267,6 +290,9 @@ export default function HeritageLeadModal({
         lead.historicalInformation ?? ''
       );
 
+      setCulturalSignificance('');
+      setSources('');
+
       setLocationVerified(
         lead.locationVerified ?? false
       );
@@ -314,6 +340,8 @@ export default function HeritageLeadModal({
       description,
       category,
       history,
+      culturalSignificance,
+      sources,
       locationVerified,
       verifiedCoordinates,
       photoNames: existingPhotoNames,
@@ -338,6 +366,8 @@ export default function HeritageLeadModal({
     description,
     category,
     history,
+    culturalSignificance,
+    sources,
     locationVerified,
     verifiedCoordinates,
     existingPhotoNames,
@@ -640,7 +670,25 @@ export default function HeritageLeadModal({
 
     setSubmitted(true);
 
-    onSubmit(documentedLead);
+    onSubmit(
+      documentedLead,
+      {
+        historical_information:
+          history.trim(),
+
+        cultural_significance:
+          culturalSignificance.trim(),
+
+        sources:
+          sources.trim(),
+
+        latitude:
+          verifiedCoordinates![1],
+
+        longitude:
+          verifiedCoordinates![0],
+      }
+    );
   };
 
   // =========================================================
@@ -901,6 +949,46 @@ export default function HeritageLeadModal({
 
             </div>
 
+            <div className="heritage-field heritage-form-full">
+
+  <label className="heritage-label">
+    Cultural Significance
+  </label>
+
+  <textarea
+    value={culturalSignificance}
+    onChange={(e) =>
+      setCulturalSignificance(
+        e.target.value
+      )
+    }
+    placeholder="Explain why this heritage site is culturally important."
+    className="heritage-textarea"
+    rows={3}
+  />
+
+</div>
+
+
+<div className="heritage-field heritage-form-full">
+
+  <label className="heritage-label">
+    Sources / References
+  </label>
+
+  <textarea
+    value={sources}
+    onChange={(e) =>
+      setSources(
+        e.target.value
+      )
+    }
+    placeholder="Mention local records, books, oral sources, community references, etc."
+    className="heritage-textarea"
+    rows={2}
+  />
+
+</div>
           </section>
 
           {/* EVIDENCE & VERIFICATION */}
