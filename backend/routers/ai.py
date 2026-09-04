@@ -2,8 +2,8 @@ import json
 from typing import List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import google.generativeai as genai
-from google.generativeai.types import GenerationConfig
+from google import genai
+from google.genai import types
 
 from config import settings
 
@@ -12,9 +12,10 @@ router = APIRouter(
     tags=["AI"],
 )
 
-# Configure Gemini
+# Configure Gemini Client
+client = None
 if settings.GEMINI_API_KEY:
-    genai.configure(api_key=settings.GEMINI_API_KEY)
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 # Define schemas
 class ChatMessage(BaseModel):
@@ -47,33 +48,29 @@ Provide your output EXACTLY in the following JSON format:
 
 @router.post("/chat")
 async def chat_with_heritage_ai(request: ChatRequest):
-    if not settings.GEMINI_API_KEY:
+    if not client:
         raise HTTPException(status_code=500, detail="Gemini API Key is not configured.")
 
     try:
-        # We will use gemini-1.5-flash as it is fast and supports structured JSON outputs well
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=SYSTEM_INSTRUCTION
-        )
-        
         # Prepare chat history for the API
         history = []
         for msg in request.messages[:-1]:  # all but the latest
             role = "user" if msg.role == "user" else "model"
-            history.append({"role": role, "parts": [msg.text]})
+            history.append(types.Content(role=role, parts=[types.Part.from_text(text=msg.text)]))
             
-        chat = model.start_chat(history=history)
+        chat = client.chats.create(
+            model="gemini-3.6-flash",
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_INSTRUCTION,
+                response_mime_type="application/json",
+            ),
+            history=history
+        )
         
         # The latest message
         latest_msg = request.messages[-1].text
         
-        response = chat.send_message(
-            latest_msg,
-            generation_config=GenerationConfig(
-                response_mime_type="application/json",
-            )
-        )
+        response = chat.send_message(latest_msg)
         
         # Parse the JSON response
         result = json.loads(response.text)
