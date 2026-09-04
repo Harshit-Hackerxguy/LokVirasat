@@ -96,15 +96,13 @@ function convertVerifiedLeadToSite(
     pitch: 45,
 
     bearing: 0,
-
     verificationStatus:
-      'community-verified',
+      'community-corroborated',
 
     lastUpdated:
       new Date()
         .toISOString()
         .split('T')[0],
-
     images: [],
   };
 }
@@ -775,7 +773,9 @@ export default function MapPage() {
 
               const isCommunityVerified =
                 site.verificationStatus ===
-                'community-verified';
+                  'community-corroborated' ||
+                site.verificationStatus ===
+                  'evidence-supported';
 
               const isAuthorityVerified =
                 site.verificationStatus ===

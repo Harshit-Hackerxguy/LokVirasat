@@ -84,7 +84,7 @@ SITES = [
         "zoom_level": 14.0,
         "pitch": 40.0,
         "bearing": 0.0,
-        "verification_status": VerificationStatus.community_verified,
+        "verification_status": VerificationStatus.community_corroborated,
     },
     {
         "id": "bishnoi-sacred-grove-jodhpur",
@@ -101,7 +101,7 @@ SITES = [
         "zoom_level": 13.5,
         "pitch": 35.0,
         "bearing": 0.0,
-        "verification_status": VerificationStatus.community_verified,
+        "verification_status": VerificationStatus.community_corroborated,
     },
     {
         "id": "kanchipuram-silk-weavers",
@@ -152,7 +152,7 @@ SITES = [
         "zoom_level": 14.0,
         "pitch": 60.0,
         "bearing": 20.0,
-        "verification_status": VerificationStatus.community_verified,
+        "verification_status": VerificationStatus.community_corroborated,
     },
 ]
 
@@ -241,7 +241,7 @@ def seed():
                 zoom_level=s.get("zoom_level", 15.0),
                 pitch=s.get("pitch", 45.0),
                 bearing=s.get("bearing", 0.0),
-                verification_status=s.get("verification_status", VerificationStatus.reported),
+                verification_status=s.get("verification_status", VerificationStatus.community_reported),
             )
             db.add(site)
             inserted_sites += 1

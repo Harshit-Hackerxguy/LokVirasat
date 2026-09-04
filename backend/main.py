@@ -1,6 +1,7 @@
 """
 FastAPI application entry point.
-- Registers routers for /api/sites and /api/leads
+- Registers routers for /api/sites, /api/leads,
+  /api/condition-reports and /api/documentation
 - Mounts /uploads as a static directory for uploaded images
 - Configures CORS for the Next.js frontend
 """
@@ -10,6 +11,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from .config import settings
 from .database import engine, Base
@@ -17,9 +19,12 @@ from . import models
 from .routers import sites, leads, condition_reports, documentation
 
 
+# Ensure PostGIS extension is created before tables are created
+with engine.begin() as conn:
+    conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
+
+
 # Create all tables
-# Includes heritage_sites, heritage_leads, site_images,
-# and condition_reports from the SQLAlchemy models.
 Base.metadata.create_all(bind=engine)
 
 
@@ -57,6 +62,8 @@ app.mount(
 
 app.include_router(sites.router)
 app.include_router(leads.router)
+app.include_router(documentation.router)
+app.include_router(condition_reports.router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
@@ -64,8 +71,3 @@ app.include_router(leads.router)
 @app.get("/health", tags=["Health"])
 def health():
     return {"status": "ok"}
-
-app.include_router(sites.router)
-app.include_router(leads.router)
-app.include_router(documentation.router)
-app.include_router(condition_reports.router)

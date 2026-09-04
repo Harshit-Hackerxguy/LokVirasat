@@ -112,3 +112,68 @@
   font-weight: 600;
   background: #e5e7eb;
 }
+
+/* ── Heritage Passport popup additions ─────────────────────────────────── */
+
+.popup-trust-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.popup-site-name {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.popup-passport {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.popup-passport-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.popup-passport-icon {
+  font-size: 0.85rem;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* 4-step trust progress track */
+.popup-trust-track {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.popup-trust-step {
+  flex: 1;
+  height: 5px;
+  border-radius: 99px;
+  background: #e5e7eb;
+  transition: background 0.2s;
+}
+
+.popup-trust-step.active {
+  background: var(--tc);
+}
+

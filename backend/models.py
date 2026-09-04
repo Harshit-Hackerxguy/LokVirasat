@@ -22,12 +22,12 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from geoalchemy2 import Geometry
 import enum
-from datetime import datetime
+
 from .database import Base
 
 
 # ---------------------------------------------------------------------------
-# Enumerations (mirrored from the frontend TypeScript enums)
+# Enumerations
 # ---------------------------------------------------------------------------
 
 class HeritageCategory(str, enum.Enum):
@@ -39,8 +39,9 @@ class HeritageCategory(str, enum.Enum):
 
 
 class VerificationStatus(str, enum.Enum):
-    reported = "reported"
-    community_verified = "community-verified"
+    community_reported = "community-reported"
+    community_corroborated = "community-corroborated"
+    evidence_supported = "evidence-supported"
     authority_verified = "authority-verified"
 
 
@@ -51,8 +52,23 @@ class LeadStatus(str, enum.Enum):
     verified = "verified"
 
 
+class DocumentationStatus(str, enum.Enum):
+    draft = "draft"
+    submitted = "submitted"
+    under_review = "under_review"
+    verified = "verified"
+    rejected = "rejected"
+
+
+class IssueType(str, enum.Enum):
+    Damage = "Damage"
+    Cleanliness = "Cleanliness"
+    Infrastructure = "Infrastructure"
+    Accessibility = "Accessibility"
+
+
 # ---------------------------------------------------------------------------
-# Heritage Sites  (fully documented records)
+# Heritage Sites (fully documented records)
 # ---------------------------------------------------------------------------
 
 class HeritageSite(Base):
@@ -64,7 +80,10 @@ class HeritageSite(Base):
     category = Column(SAEnum(HeritageCategory), nullable=False)
 
     # PostGIS geometry: POINT(longitude latitude), SRID 4326 (WGS84)
-    location = Column(Geometry("POINT", srid=4326), nullable=False)
+    location = Column(
+        Geometry("POINT", srid=4326),
+        nullable=False,
+    )
 
     # Map camera settings
     zoom_level = Column(Float, default=15.0)
@@ -73,11 +92,15 @@ class HeritageSite(Base):
 
     verification_status = Column(
         SAEnum(VerificationStatus),
-        default=VerificationStatus.reported,
+        default=VerificationStatus.community_reported,
         nullable=False,
     )
 
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
     last_updated = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -93,20 +116,48 @@ class HeritageSite(Base):
     )
 
 
+# ---------------------------------------------------------------------------
+# Site Images
+# ---------------------------------------------------------------------------
+
 class SiteImage(Base):
     __tablename__ = "site_images"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    site_id = Column(String, ForeignKey("heritage_sites.id", ondelete="CASCADE"), nullable=False)
-    url = Column(String(512), nullable=False)          # relative path served as static
-    caption = Column(String(255), nullable=True)
-    uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
+    id = Column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
 
-    site = relationship("HeritageSite", back_populates="images")
+    site_id = Column(
+        String,
+        ForeignKey("heritage_sites.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    url = Column(
+        String(512),
+        nullable=False,
+    )
+
+    caption = Column(
+        String(255),
+        nullable=True,
+    )
+
+    uploaded_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    site = relationship(
+        "HeritageSite",
+        back_populates="images",
+    )
 
 
 # ---------------------------------------------------------------------------
-# Heritage Leads  (community-submitted tips – separate table)
+# Heritage Leads (community-submitted tips)
 # ---------------------------------------------------------------------------
 
 class HeritageLead(Base):
@@ -117,23 +168,42 @@ class HeritageLead(Base):
     description = Column(Text, nullable=False)
     category = Column(SAEnum(HeritageCategory), nullable=False)
 
-    # Approximate location (community submitted – may be imprecise)
-    location = Column(Geometry("POINT", srid=4326), nullable=False)
-    village_or_area = Column(String(255), nullable=False)
+    # Approximate location submitted by the community
+    location = Column(
+        Geometry("POINT", srid=4326),
+        nullable=False,
+    )
 
-    submitted_by = Column(String(255), nullable=False)
-    submitted_at = Column(DateTime(timezone=True), server_default=func.now())
+    village_or_area = Column(
+        String(255),
+        nullable=False,
+    )
 
-    status = Column(SAEnum(LeadStatus), default=LeadStatus.needs_documentation, nullable=False)
-    assigned_contributor = Column(String(255), nullable=True)
+    submitted_by = Column(
+        String(255),
+        nullable=False,
+    )
 
-class DocumentationStatus(str, enum.Enum):
-    draft = "draft"
-    submitted = "submitted"
-    under_review = "under_review"
-    verified = "verified"
-    rejected = "rejected"
+    submitted_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
 
+    status = Column(
+        SAEnum(LeadStatus),
+        default=LeadStatus.needs_documentation,
+        nullable=False,
+    )
+
+    assigned_contributor = Column(
+        String(255),
+        nullable=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Heritage Documentation
+# ---------------------------------------------------------------------------
 
 class HeritageDocumentation(Base):
     __tablename__ = "heritage_documentation"
@@ -141,77 +211,75 @@ class HeritageDocumentation(Base):
     id = Column(
         String,
         primary_key=True,
-        index=True
+        index=True,
     )
 
     lead_id = Column(
         String,
         ForeignKey("heritage_leads.id"),
-        nullable=False
+        nullable=False,
     )
 
     contributor_id = Column(
         String,
-        nullable=False
+        nullable=False,
     )
 
     historical_information = Column(
         Text,
-        nullable=False
+        nullable=False,
     )
 
     cultural_significance = Column(
         Text,
-        nullable=False
+        nullable=False,
     )
 
     sources = Column(
         Text,
-        nullable=True
+        nullable=True,
     )
 
     latitude = Column(
         Float,
-        nullable=False
+        nullable=False,
     )
 
     longitude = Column(
         Float,
-        nullable=False
+        nullable=False,
     )
 
     status = Column(
         SAEnum(DocumentationStatus),
-        default=DocumentationStatus.submitted
+        default=DocumentationStatus.submitted,
+        nullable=False,
     )
 
     created_at = Column(
-        DateTime,
-        default=datetime.utcnow
+        DateTime(timezone=True),
+        server_default=func.now(),
     )
 
     updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
 
 # ---------------------------------------------------------------------------
-# Condition Reports  (verified field reports from contributors)
+# Condition Reports (field reports from contributors)
 # ---------------------------------------------------------------------------
-
-class IssueType(str, enum.Enum):
-    Damage = "Damage"
-    Cleanliness = "Cleanliness"
-    Infrastructure = "Infrastructure"
-    Accessibility = "Accessibility"
-
 
 class ConditionReport(Base):
     __tablename__ = "condition_reports"
 
-    id = Column(String, primary_key=True, index=True)
+    id = Column(
+        String,
+        primary_key=True,
+        index=True,
+    )
 
     site_id = Column(
         String,
@@ -225,7 +293,10 @@ class ConditionReport(Base):
         nullable=False,
     )
 
-    photo_url = Column(String(512), nullable=False)
+    photo_url = Column(
+        String(512),
+        nullable=False,
+    )
 
     exif_location = Column(
         Geometry("POINT", srid=4326),
@@ -239,12 +310,15 @@ class ConditionReport(Base):
     )
 
     resolved = Column(
-    Boolean,
-    nullable=False,
-    default=False,
+        Boolean,
+        nullable=False,
+        default=False,
     )
 
-    description = Column(Text, nullable=False)
+    description = Column(
+        Text,
+        nullable=False,
+    )
 
     created_at = Column(
         DateTime(timezone=True),

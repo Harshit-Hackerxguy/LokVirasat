@@ -1,5 +1,22 @@
 import { z } from 'zod';
 
+export const SUPPORTED_LANGUAGES = [
+  'English',
+  'Hindi',
+  'Tamil',
+  'Telugu',
+  'Kannada',
+  'Bengali',
+  'Marathi',
+  'Gujarati',
+  'Punjabi',
+  'Malayalam',
+  'Odia',
+  'Urdu',
+] as const;
+
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
 export const heritageSchema = z.object({
   name: z.string().min(3, { message: 'Name must be at least 3 characters long.' }),
   coordinates: z.tuple([z.number(), z.number()], {
@@ -13,6 +30,16 @@ export const heritageSchema = z.object({
       message: 'You can upload a maximum of 5 images.',
     })
     .optional(),
+
+  // ── New fields ────────────────────────────────────────────────────────────
+  storytellerName: z.string().optional(),
+  language: z.enum(SUPPORTED_LANGUAGES).optional(),
+  supportingEvidence: z
+    .string()
+    .url({ message: 'Please enter a valid URL.' })
+    .optional()
+    .or(z.literal('')),
 });
 
 export type HeritageFormValues = z.infer<typeof heritageSchema>;
+

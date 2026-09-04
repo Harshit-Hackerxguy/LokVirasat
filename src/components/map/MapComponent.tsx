@@ -20,6 +20,8 @@ import 'leaflet.markercluster';
 import {
   HeritageSite,
   HeritageLead,
+  VERIFICATION_STATUS_COLORS,
+  VERIFICATION_STATUS_LABELS,
 } from '@/types';
 
 import { useMapStore } from '@/store/useMapStore';
@@ -55,37 +57,54 @@ const ActiveIcon = L.icon({
   shadowSize: [41, 41],
 });
 
-// Marker colors based on actual LokVirasat categories
-function createMarkerIcon(category: string) {
-  const colors: Record<string, string> = {
-    Monument: '#ff8800',
-    'Sacred Grove': '#22c55e',
-    'Folklore Site': '#a855f7',
-    'Ancient Ruins': '#eab308',
-    'Traditional Craft Hub': '#ec4899',
-    'Heritage Lead': '#38bdf8',
-  };
-
-  const color = colors[category] || '#ff8800';
+// ──────────────────────────────────────────────────────────────────────────
+// Marker icons — colour encodes TRUST LEVEL, not category
+// 🟡 community-reported  →  yellow (#eab308)
+// 🟠 community-corroborated → orange (#f97316)
+// 🔵 evidence-supported  →  blue  (#3b82f6)
+// 🟢 authority-verified  →  green (#22c55e)
+// ──────────────────────────────────────────────────────────────────────────
+function createMarkerIcon(
+  verificationStatus?: string,
+  isLead = false,
+) {
+  // Heritage leads get a distinct cyan colour so they are easy to spot
+  const color = isLead
+    ? '#38bdf8'
+    : (VERIFICATION_STATUS_COLORS[
+        verificationStatus as keyof typeof VERIFICATION_STATUS_COLORS
+      ] ?? '#eab308');
 
   return L.divIcon({
     className: 'custom-marker',
-
     html: `
       <div class="marker-pin" style="--marker-color: ${color}">
         <div class="marker-dot"></div>
       </div>
-
-      <div
-        class="marker-pulse"
-        style="--marker-color: ${color}"
-      ></div>
+      <div class="marker-pulse" style="--marker-color: ${color}"></div>
     `,
-
     iconSize: [30, 30],
     iconAnchor: [15, 15],
     popupAnchor: [0, -20],
   });
+}
+
+/** Returns a colour hex for a given trust status (used in popup badge) */
+function trustColor(status?: string): string {
+  return (
+    VERIFICATION_STATUS_COLORS[
+      status as keyof typeof VERIFICATION_STATUS_COLORS
+    ] ?? '#eab308'
+  );
+}
+
+/** Returns a human-readable label for a trust status */
+function trustLabel(status?: string): string {
+  return (
+    VERIFICATION_STATUS_LABELS[
+      status as keyof typeof VERIFICATION_STATUS_LABELS
+    ] ?? 'Community Reported'
+  );
 }
 
 function MarkerClusterGroup({
@@ -145,70 +164,54 @@ function MarkerClusterGroup({
       const [lng, lat] = site.coordinates;
 
       const marker = L.marker([lat, lng], {
-        icon: createMarkerIcon(site.category),
+        icon: createMarkerIcon(site.verificationStatus),
       });
 
-      const popupContent =
-        document.createElement('div');
+      const popupContent = document.createElement('div');
+      popupContent.className = 'marker-popup-content';
 
-      popupContent.className =
-        'marker-popup-content';
-
-      const verificationText =
-        site.verificationStatus
-          ?.replace(/-/g, ' ') ||
-        'Reported';
+      const tColor = trustColor(site.verificationStatus);
+      const tLabel = trustLabel(site.verificationStatus);
 
       const firstImage =
-        site.images && site.images.length > 0
-          ? site.images[0]
-          : null;
+        site.images && site.images.length > 0 ? site.images[0] : null;
 
       const imageHtml = firstImage
-        ? `<div class="popup-image">
-             <img
-               src="${firstImage}"
-               alt="${site.name}"
-               loading="lazy"
-             />
-           </div>`
+        ? `<div class="popup-image"><img src="${firstImage}" alt="${site.name}" loading="lazy" /></div>`
         : '';
 
+      // Heritage Passport popup
       popupContent.innerHTML = `
         <div class="popup-inner">
           ${imageHtml}
           <div class="popup-body">
 
             <div class="popup-header">
-              <span class="severity-badge ${site.category}">
-                ${site.category}
+              <span class="severity-badge ${site.category}">${site.category}</span>
+              <span class="popup-trust-badge" style="background:${tColor}20;color:${tColor};border:1px solid ${tColor}40">
+                ${tLabel}
               </span>
             </div>
 
-            <strong
-              class="block font-bold text-gray-800"
-              style="
-                font-size: 1.1rem;
-                margin-top: 4px;
-              "
-            >
-              ${site.name}
-            </strong>
+            <strong class="popup-site-name">${site.name}</strong>
 
-            <p class="popup-description">
-              ${site.description || 'No description provided'}
-            </p>
+            <p class="popup-description">${site.description || 'No description provided'}</p>
 
-            <div class="popup-meta">
-              <span>
-                📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}
-              </span>
+            <div class="popup-passport">
+              <div class="popup-passport-row">
+                <span class="popup-passport-icon">📍</span>
+                <span>${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E</span>
+              </div>
+              ${site.documentedBy ? `<div class="popup-passport-row"><span class="popup-passport-icon">✍️</span><span>${site.documentedBy}</span></div>` : ''}
+              ${site.lastUpdated ? `<div class="popup-passport-row"><span class="popup-passport-icon">🗓</span><span>${site.lastUpdated}</span></div>` : ''}
             </div>
 
-            <div class="popup-meta">
-              <span>
-                ✓ ${verificationText}
-              </span>
+            <div class="popup-trust-track">
+              ${['community-reported','community-corroborated','evidence-supported','authority-verified'].map((s) => {
+                const active = s === site.verificationStatus;
+                const c = trustColor(s);
+                return `<div class="popup-trust-step ${active ? 'active' : ''}" style="--tc:${c}" title="${trustLabel(s)}"></div>`;
+              }).join('')}
             </div>
 
           </div>
@@ -216,8 +219,8 @@ function MarkerClusterGroup({
       `;
 
       const popup = L.popup({
-        maxWidth: 320,
-        minWidth: 280,
+        maxWidth: 340,
+        minWidth: 290,
         closeButton: true,
       }).setContent(popupContent);
 
@@ -238,7 +241,7 @@ function MarkerClusterGroup({
       const [lng, lat] = lead.approximateLocation;
 
       const marker = L.marker([lat, lng], {
-        icon: createMarkerIcon('Heritage Lead'),
+        icon: createMarkerIcon(undefined, true),
       });
 
       const popupContent =

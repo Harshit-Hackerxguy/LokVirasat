@@ -21,12 +21,14 @@ import {
   Sparkles,
   Mic,
   X,
+  Loader2,
 } from 'lucide-react';
 
 
 import {
   HeritageSite,
   HeritageLead,
+  HeritageCategory,
   ConditionReport,
 } from '@/types';
 
@@ -75,7 +77,7 @@ function normalizeApiSite(
 ): HeritageSite {
   let verificationStatus:
     HeritageSite['verificationStatus'] =
-    'reported';
+    'community-reported';
 
   if (
     data.verification_status ===
@@ -85,11 +87,18 @@ function normalizeApiSite(
       'authority-verified';
   } else if (
     data.verification_status ===
-    'community-verified'
+    'community-corroborated'
   ) {
     verificationStatus =
-      'community-verified';
+      'community-corroborated';
+  } else if (
+    data.verification_status ===
+    'evidence-supported'
+  ) {
+    verificationStatus =
+      'evidence-supported';
   }
+
 
   return {
     id: data.id,
@@ -163,6 +172,7 @@ export default function HeritagePage() {
               cache: 'no-store',
             }
           );
+
 
         if (response.ok) {
           const sites =
@@ -292,7 +302,7 @@ export default function HeritagePage() {
                   0,
 
                 verificationStatus:
-                  'community-verified',
+                  'community-corroborated',
 
                 lastUpdated:
                   lead.submitted_at
@@ -332,6 +342,7 @@ export default function HeritagePage() {
     }
 
     loadHeritageSite();
+
 
     return () => {
       cancelled = true;
@@ -403,6 +414,7 @@ export default function HeritagePage() {
           'Failed to save heritage record offline:',
           error
         );
+
 
         alert(
           'Failed to save this heritage record offline.'
@@ -482,8 +494,9 @@ export default function HeritagePage() {
   }
 
   const isCommunityVerified =
-    site.verificationStatus ===
-    'community-verified';
+    site.verificationStatus === 'community-corroborated'
+    || site.verificationStatus === 'evidence-supported'
+    || site.verificationStatus === 'authority-verified';
 
   const isAuthorityVerified =
     site.verificationStatus ===

@@ -28,7 +28,7 @@ export const HERITAGE_SITES: HeritageSite[] = [
     pitch: 50,
     bearing: 20,
 
-    verificationStatus: 'community-verified',
+    verificationStatus: 'evidence-supported',
     lastUpdated: '2026-08-23',
     images: [],
   },
@@ -44,7 +44,7 @@ export const HERITAGE_SITES: HeritageSite[] = [
     pitch: 40,
     bearing: 10,
 
-    verificationStatus: 'community-verified',
+    verificationStatus: 'community-corroborated',
     lastUpdated: '2026-08-23',
     images: [],
   },
@@ -60,7 +60,7 @@ export const HERITAGE_SITES: HeritageSite[] = [
     pitch: 45,
     bearing: -10,
 
-    verificationStatus: 'reported',
+    verificationStatus: 'community-reported',
     lastUpdated: '2026-08-23',
     images: [],
   },

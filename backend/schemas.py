@@ -8,7 +8,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
+<<<<<<< ours
 from .models import HeritageCategory, VerificationStatus, LeadStatus, DocumentationStatus
+=======
+from models import HeritageCategory, VerificationStatus, LeadStatus
+>>>>>>> theirs
 
 
 # ---------------------------------------------------------------------------
@@ -38,7 +42,7 @@ class HeritageSiteCreate(BaseModel):
     zoom_level: float = 15.0
     pitch: float = 45.0
     bearing: float = 0.0
-    verification_status: VerificationStatus = VerificationStatus.reported
+    verification_status: VerificationStatus = VerificationStatus.community_reported
 
 
 class HeritageSiteOut(BaseModel):
