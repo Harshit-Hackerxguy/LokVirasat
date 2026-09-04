@@ -6,12 +6,8 @@ Run from the SIH/backend parent directory:
 Data sourced from publicly known locations of Indian heritage structures.
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-from backend.database import SessionLocal, engine, Base
-from backend.models import (
+from database import SessionLocal, engine, Base
+from models import (
     HeritageSite, HeritageLead,
     HeritageCategory, VerificationStatus, LeadStatus,
 )

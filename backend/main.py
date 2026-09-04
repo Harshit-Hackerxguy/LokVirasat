@@ -13,10 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from .config import settings
-from .database import engine, Base
-from . import models
-from .routers import sites, leads, condition_reports, documentation
+from config import settings
+from database import engine, Base
+import models
+from routers import sites, leads, condition_reports, documentation
 
 
 # Ensure PostGIS extension is created before tables are created

@@ -111,7 +111,7 @@ def create_condition_report(
 ):
     from geoalchemy2.shape import from_shape
     from shapely.geometry import Point
-    from .models import ConditionReport, IssueType
+    from models import ConditionReport, IssueType
 
     try:
         issue_type = IssueType(payload.issue_type)
@@ -149,7 +149,7 @@ def resolve_condition_report(
     report_id: str,
     resolved: bool,
 ):
-    from .models import ConditionReport
+    from models import ConditionReport
 
     report = (
         db.query(ConditionReport)

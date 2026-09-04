@@ -13,8 +13,9 @@ Endpoints:
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import crud, schemas
-from ..database import get_db
+import crud
+import schemas
+from database import get_db
 
 router = APIRouter(
     prefix="/api/condition-reports",
@@ -36,7 +37,7 @@ def create_condition_report(
     """
 
     # Make sure the referenced heritage site exists
-    from ..models import HeritageSite
+    from models import HeritageSite
 
     site = (
         db.query(HeritageSite)
@@ -51,7 +52,7 @@ def create_condition_report(
         )
 
     # Prevent duplicate report IDs
-    from ..models import ConditionReport
+    from models import ConditionReport
 
     existing = (
         db.query(ConditionReport)
@@ -88,7 +89,7 @@ def list_condition_reports(
     Return all condition reports.
     """
 
-    from ..models import ConditionReport
+    from models import ConditionReport
 
     return (
         db.query(ConditionReport)
